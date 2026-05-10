@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiService {
 
   // 🔥 GANTI INI DENGAN IP LAPTOP KAMU (cek dengan ipconfig di cmd)
-  static const String localIP = "192.168.0.138";
+  static const String localIP = "192.168.0.100";
 
   // 🔥 AUTO BASE URL → ke Laravel
   static String get baseUrl {
@@ -275,4 +275,49 @@ class ApiService {
       };
     }
   }
+
+   // =======================
+// 📰 GET ARTICLES
+// =======================
+static Future<List<dynamic>> getArticles() async {
+
+  try {
+
+    final response = await http.get(
+      Uri.parse("$baseUrl/articles"),
+    );
+
+    print("ARTICLE STATUS: ${response.statusCode}");
+    print("ARTICLE BODY: ${response.body}");
+
+    if (response.statusCode == 200) {
+
+      final data = jsonDecode(response.body);
+
+      // jika array langsung
+      if (data is List) {
+        return data;
+      }
+
+      // jika object dengan key data
+      if (data is Map && data.containsKey("data")) {
+        return data["data"];
+      }
+
+      // jika object dengan key articles
+      if (data is Map && data.containsKey("articles")) {
+        return data["articles"];
+      }
+    }
+
+    return [];
+
+  } catch (e) {
+
+    print("GET ARTICLE ERROR: $e");
+
+    return [];
+  }
+}
+
 }
