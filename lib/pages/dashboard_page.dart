@@ -3,6 +3,7 @@ import '../services/auth_service.dart';
 import 'login_page.dart';
 import 'bmi_page.dart';
 import 'chat_page.dart';
+import 'article_page.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -606,10 +607,15 @@ class _DashboardPageState extends State<DashboardPage> {
                           badge: 'NEW',
                         ),
                         _buildServiceCard(
-                          icon: Icons.favorite_rounded,
-                          title: 'Konsultasi Ahli',
-                          description: 'Dapatkan rekomendasi kesehatan dan nutrisi dari ahli gizi terpercaya.',
-                          onTap: () => _handleDevelopmentFeature(),
+                            icon: Icons.favorite_rounded,
+                            title: 'Artikel Kesehatan',
+                            description: 'Baca artikel kesehatan, nutrisi, dan tips pencegahan obesitas.',
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ArticlePage(),
+                              ),
+                            ),
                         ),
                         _buildServiceCard(
                           icon: Icons.history_rounded,
