@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../services/auth_service.dart';
 import 'login_page.dart';
 import 'bmi_page.dart';
 import 'chat_page.dart';
+import 'obesity_predict_page.dart';
+import 'profile_page.dart';
 
+// ─────────────────────────────────────────────
+//  SHELL — satu Scaffold, bottom nav selalu ada
+// ─────────────────────────────────────────────
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
 
@@ -11,125 +17,144 @@ class DashboardPage extends StatefulWidget {
   State<DashboardPage> createState() => _DashboardPageState();
 }
 
-class _DashboardPageState extends State<DashboardPage> {
-  int _currentIndex = 0;
-  bool _isLogin = false;
+class _DashboardPageState extends State<DashboardPage>
+    with WidgetsBindingObserver {  // 🔥 tambah WidgetsBindingObserver
+  int  _currentIndex = 0;
+  bool _isLogin      = false;
 
-  // Theme colors - more professional palette
-  static const Color _primaryColor = Color(0xFF059669); // Emerald green
-  static const Color _primaryDarkColor = Color(0xFF047857);
-  static const Color _primaryLightColor = Color(0xFFD1FAE5);
-  static const Color _accentColor = Color(0xFF10B981);
-  static const Color _surfaceColor = Color(0xFFF9FAFB);
-  static const Color _cardColor = Colors.white;
-  static const Color _textPrimaryColor = Color(0xFF111827);
-  static const Color _textSecondaryColor = Color(0xFF6B7280);
-  static const Color _textTertiaryColor = Color(0xFF9CA3AF);
-  static const Color _borderColor = Color(0xFFE5E7EB);
+  static const Color _green700   = Color(0xFF047857);
+  static const Color _green100   = Color(0xFFD1FAE5);
+  static const Color _neutral200 = Color(0xFFE5E7EB);
+  static const Color _neutral400 = Color(0xFF9CA3AF);
+  static const Color _neutral900 = Color(0xFF111827);
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this); // 🔥 daftarkan observer
     _checkLogin();
   }
 
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this); // 🔥 bersihkan observer
+    super.dispose();
+  }
+
+  // 🔥 Dipanggil otomatis saat app resume dari background
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _checkLogin();
+  }
+
+  // ── _checkLogin dipanggil setiap kembali dari halaman manapun ──
   Future<void> _checkLogin() async {
     final status = await AuthService.isLoggedIn();
-    if (mounted) {
-      setState(() => _isLogin = status);
-    }
+    if (mounted) setState(() => _isLogin = status);
   }
 
-  void _handleProtectedFeature(VoidCallback action) {
-    if (_isLogin) {
-      action();
-    } else {
-      _showLoginWarning();
-    }
-  }
-
-  void _handleDevelopmentFeature() {
-    if (_isLogin) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Fitur sedang dalam pengembangan'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    } else {
-      _showLoginWarning();
-    }
-  }
-
-  // Perbaikan: Function untuk navigasi ke login
+  // ── FIX: await navigasi ke login, lalu refresh status ──────────
   Future<void> _navigateToLogin() async {
     await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginPage()),
-    );
-    // Refresh status login setelah kembali dari halaman login
+        context, MaterialPageRoute(builder: (_) => const LoginPage()));
+    // Setelah kembali dari LoginPage, refresh status login
     await _checkLogin();
   }
 
-  void _showLoginWarning() {
+  // ── FIX: navigasi ke ProfilePage — dipindah ke sini (parent)
+  //    sehingga _HomeTab tidak perlu akses Navigator parent sendiri
+  Future<void> _navigateToProfile() async {
+    await Navigator.push(
+        context, MaterialPageRoute(builder: (_) => const ProfilePage()));
+    // Refresh setelah kembali (antisipasi jika user logout dari ProfilePage)
+    await _checkLogin();
+  }
+
+  void _switchTab(int index) {
+    const protectedTabs = {2, 3, 4};
+    if (protectedTabs.contains(index) && !_isLogin) {
+      _showLoginSheet();
+      return;
+    }
+    HapticFeedback.lightImpact();
+    setState(() => _currentIndex = index);
+  }
+
+  void _showLoginSheet() {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
-      backgroundColor: _cardColor,
-      elevation: 0,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(28),
+      builder: (_) => Padding(
+        padding: EdgeInsets.fromLTRB(
+            24, 12, 24, MediaQuery.of(context).viewInsets.bottom + 32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 64,
-              height: 64,
+              width: 40,
+              height: 4,
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [_primaryLightColor, _primaryColor.withOpacity(0.1)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(32),
+                  color: _neutral200,
+                  borderRadius: BorderRadius.circular(4)),
+            ),
+            const SizedBox(height: 28),
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDF4),
+                shape: BoxShape.circle,
+                border: Border.all(color: _green100, width: 2),
               ),
-              child: Icon(Icons.lock_outline_rounded, color: _primaryColor, size: 32),
+              child: const Icon(Icons.lock_outline_rounded,
+                  color: _green700, size: 34),
             ),
             const SizedBox(height: 20),
             const Text(
-              'Akses Perlu Login',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: _textPrimaryColor),
+              'Login Diperlukan',
+              style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: _neutral900,
+                  letterSpacing: -0.3),
             ),
-            const SizedBox(height: 12),
-            Text(
-              'Silakan login untuk mengakses fitur ini dan nikmati pengalaman lengkap ObesityCheck',
+            const SizedBox(height: 8),
+            const Text(
+              'Silakan login untuk mengakses fitur ini.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: _textSecondaryColor, height: 1.4),
+              style: TextStyle(fontSize: 14, color: _neutral400, height: 1.5),
             ),
             const SizedBox(height: 28),
             SizedBox(
               width: double.infinity,
+              height: 52,
               child: ElevatedButton(
                 onPressed: () async {
                   Navigator.pop(context);
                   await _navigateToLogin();
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _primaryColor,
+                  backgroundColor: _green700,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
                   elevation: 0,
                 ),
-                child: const Text('Login Sekarang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                child: const Text('Login Sekarang',
+                    style:
+                        TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
               ),
             ),
             const SizedBox(height: 12),
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('Nanti Saja', style: TextStyle(color: _textSecondaryColor)),
+              child: const Text('Nanti Saja',
+                  style: TextStyle(
+                      color: _neutral400, fontWeight: FontWeight.w500)),
             ),
           ],
         ),
@@ -137,102 +162,52 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildServiceCard({
-    required IconData icon,
-    required String title,
-    required String description,
-    required VoidCallback onTap,
-    String? badge,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: _cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _borderColor, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+  @override
+  Widget build(BuildContext context) {
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+    ));
+
+    return Scaffold(
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [
+          // ── FIX: ValueKey memaksa Flutter rebuild _HomeTab
+          //    setiap kali _isLogin berubah (true ↔ false) ───────────
+          _HomeTab(
+            key              : ValueKey(_isLogin), // 🔥 FIX UTAMA
+            isLogin          : _isLogin,
+            onNavigateToLogin: _navigateToLogin,
+            onNavigateToProfile: _navigateToProfile,
+            onSwitchTab      : _switchTab,
           ),
+          const BmiPage(embedded: true),
+          ChatPage(embedded: true),
+          ObesityPredictPage(embedded: true),
+          const _ArticleTab(),
         ],
       ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.all(18),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: _neutral200, width: 1)),
+        ),
+        child: SafeArea(
+          child: SizedBox(
+            height: 64,
             child: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [_primaryLightColor, _primaryColor.withOpacity(0.05)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: Icon(icon, color: _primaryColor, size: 28),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            title,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                              color: _textPrimaryColor,
-                            ),
-                          ),
-                          if (badge != null) ...[
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: _primaryLightColor,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                badge,
-                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: _primaryColor),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        description,
-                        style: TextStyle(
-                          color: _textSecondaryColor,
-                          fontSize: 13,
-                          height: 1.3,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: _surfaceColor,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.arrow_forward_ios, color: _primaryColor, size: 14),
-                ),
+                _navItem(0, Icons.home_rounded,
+                    Icons.home_outlined, 'Beranda'),
+                _navItem(1, Icons.monitor_weight_rounded,
+                    Icons.monitor_weight_outlined, 'BMI'),
+                _navItem(2, Icons.chat_bubble_rounded,
+                    Icons.chat_bubble_outline, 'SiObe'),
+                _navItem(3, Icons.psychology_rounded,
+                    Icons.psychology_outlined, 'Prediksi'),
+                _navItem(4, Icons.article_rounded,
+                    Icons.article_outlined, 'Artikel'),
               ],
             ),
           ),
@@ -241,438 +216,584 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 48, 20, 32),
-      decoration: BoxDecoration(
-        color: _cardColor,
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Logo
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [_primaryColor, _accentColor],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Icon(Icons.health_and_safety, color: Colors.white, size: 22),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'ObesityCheck',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: _textPrimaryColor,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ],
+  Widget _navItem(int index, IconData activeIcon, IconData inactiveIcon,
+      String label) {
+    final isActive = _currentIndex == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _switchTab(index),
+        behavior: HitTestBehavior.opaque,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOut,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: isActive ? _green100 : Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
               ),
-              
-              // Login Button or Avatar
-              if (!_isLogin)
-                Container(
+              child: Icon(
+                isActive ? activeIcon : inactiveIcon,
+                color: isActive ? _green700 : _neutral400,
+                size: 22,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                color: isActive ? _green700 : _neutral400,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+//  TAB 0 — Beranda
+// ─────────────────────────────────────────────
+class _HomeTab extends StatefulWidget {
+  final bool isLogin;
+  final Future<void> Function() onNavigateToLogin;
+  final Future<void> Function() onNavigateToProfile; // 🔥 FIX: tambah parameter
+  final void Function(int) onSwitchTab;
+
+  const _HomeTab({
+    required this.isLogin,
+    required this.onNavigateToLogin,
+    required this.onNavigateToProfile, // 🔥 FIX
+    required this.onSwitchTab, required ValueKey<bool> key,
+  });
+
+  @override
+  State<_HomeTab> createState() => _HomeTabState();
+}
+
+class _HomeTabState extends State<_HomeTab>
+    with SingleTickerProviderStateMixin {
+  static const Color _green900   = Color(0xFF064E3B);
+  static const Color _green700   = Color(0xFF047857);
+  static const Color _green500   = Color(0xFF10B981);
+  static const Color _green100   = Color(0xFFD1FAE5);
+  static const Color _green50    = Color(0xFFF0FDF4);
+  static const Color _neutral50  = Color(0xFFF9FAFB);
+  static const Color _neutral100 = Color(0xFFF3F4F6);
+  static const Color _neutral200 = Color(0xFFE5E7EB);
+  static const Color _neutral400 = Color(0xFF9CA3AF);
+  static const Color _neutral600 = Color(0xFF4B5563);
+  static const Color _neutral900 = Color(0xFF111827);
+
+  late AnimationController _anim;
+  late Animation<double>  _fade;
+  late Animation<Offset>  _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _anim = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 650));
+    _fade = CurvedAnimation(parent: _anim, curve: Curves.easeOut);
+    _slide = Tween<Offset>(
+            begin: const Offset(0, 0.06), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _anim, curve: Curves.easeOut));
+    _anim.forward();
+  }
+
+  @override
+  void dispose() {
+    _anim.dispose();
+    super.dispose();
+  }
+
+  // ── Top bar ─────────────────────────────────────────────────────
+  Widget _topBar() => Padding(
+        padding: EdgeInsets.fromLTRB(
+            16, MediaQuery.of(context).padding.top + 12, 16, 0),
+        child: Row(
+          children: [
+            // Logo
+            Container(
+              padding: const EdgeInsets.all(9),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [_green500, _green700],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.health_and_safety_rounded,
+                  color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              'ObesityCheck',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: _neutral900,
+                letterSpacing: -0.4,
+              ),
+            ),
+            const Spacer(),
+
+            // 🔥 FIX: tombol avatar memanggil widget.onNavigateToProfile
+            //         (bukan Navigator.push langsung dari sini)
+            if (!widget.isLogin)
+              GestureDetector(
+                onTap: widget.onNavigateToLogin,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 9),
                   decoration: BoxDecoration(
-                    border: Border.all(color: _primaryColor, width: 1.5),
-                    borderRadius: BorderRadius.circular(30),
+                    color: _green700,
+                    borderRadius: BorderRadius.circular(24),
                   ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: _navigateToLogin,
-                      borderRadius: BorderRadius.circular(30),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.login_rounded, color: _primaryColor, size: 18),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Login',
-                              style: TextStyle(
-                                color: _primaryColor,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                )
-              else
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [_primaryColor, _accentColor],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => _handleDevelopmentFeature(),
-                      borderRadius: BorderRadius.circular(30),
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        child: const Icon(Icons.person, color: Colors.white, size: 22),
-                      ),
+                  child: const Text(
+                    'Login',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
                     ),
                   ),
                 ),
-            ],
-          ),
-          const SizedBox(height: 32),
-          
-          // Hero Section
-          Container(
-            padding: const EdgeInsets.all(24),
+              )
+            else
+              GestureDetector(
+                onTap: widget.onNavigateToProfile, // 🔥 FIX: pakai callback
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: _green50,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: _green100, width: 1.5),
+                  ),
+                  child: const Icon(Icons.person_rounded,
+                      color: _green700, size: 22),
+                ),
+              ),
+          ],
+        ),
+      );
+
+  // ── Hero banner ────────────────────────────────────────────────
+  Widget _hero() => FadeTransition(
+        opacity: _fade,
+        child: SlideTransition(
+          position: _slide,
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [_primaryColor, _primaryDarkColor],
+              gradient: const LinearGradient(
+                colors: [_green700, _green900],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(28),
               boxShadow: [
                 BoxShadow(
-                  color: _primaryColor.withOpacity(0.3),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
+                  color: _green700.withOpacity(0.35),
+                  blurRadius: 24,
+                  offset: const Offset(0, 10),
+                )
               ],
             ),
-            child: Column(
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Text(
-                              'KUIS KESEHATAN',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Cek Risiko\nObesitas Anda',
-                            style: TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              height: 1.2,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Perhitungan BMI akurat & konsultasi dengan ahli gizi',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
-                              fontSize: 13,
-                              height: 1.3,
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: () {
-                                Navigator.push(context, MaterialPageRoute(builder: (_) => const BmiPage()));
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: _primaryColor,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                elevation: 0,
-                              ),
-                              child: const Text(
-                                'Mulai Cek BMI',
-                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
-                        child: Image.asset(
-                          'assets/img/gambar_awal.png',
-                          height: 180,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            height: 180,
-                            color: Colors.white.withOpacity(0.1),
-                            child: const Icon(Icons.fitness_center, size: 60, color: Colors.white),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          'KUIS KESEHATAN',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: 1,
                           ),
                         ),
                       ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        'Cek Risiko\nObesitas',
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          height: 1.15,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'BMI akurat & konsultasi ahli gizi',
+                        style: TextStyle(
+                            color: Colors.white.withOpacity(0.75),
+                            fontSize: 13),
+                      ),
+                      const SizedBox(height: 20),
+                      GestureDetector(
+                        onTap: () => widget.onSwitchTab(1),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Mulai Cek',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: _green700,
+                                ),
+                              ),
+                              SizedBox(width: 6),
+                              Icon(Icons.arrow_forward_rounded,
+                                  size: 16, color: _green700),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Image.asset(
+                    'assets/img/gambar_awal.png',
+                    width: 110,
+                    height: 160,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      width: 110,
+                      height: 160,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Icon(Icons.fitness_center,
+                          size: 48, color: Colors.white),
                     ),
-                  ],
+                  ),
                 ),
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      );
 
-  Widget _buildFooter() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      color: _cardColor,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [_primaryLightColor, _primaryColor.withOpacity(0.05)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(Icons.favorite, color: _primaryColor, size: 22),
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'ObesityCheck',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _textPrimaryColor),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Text(
-            'Solusi digital terpercaya untuk memantau kesehatan tubuh dan risiko obesitas masyarakat Indonesia.',
-            style: TextStyle(color: _textSecondaryColor, height: 1.5),
-          ),
-          const SizedBox(height: 24),
-          const Divider(color: _borderColor, height: 1),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Akses Cepat', style: TextStyle(fontWeight: FontWeight.w700, color: _textPrimaryColor)),
-                    const SizedBox(height: 12),
-                    _buildFooterLink('Beranda'),
-                    _buildFooterLink('Tentang Kami'),
-                    _buildFooterLink('Kontak'),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Layanan', style: TextStyle(fontWeight: FontWeight.w700, color: _textPrimaryColor)),
-                    const SizedBox(height: 12),
-                    _buildFooterLink('Cek BMI'),
-                    _buildFooterLink('Konsultasi'),
-                    _buildFooterLink('Riwayat'),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          const Divider(color: _borderColor, height: 1),
-          const SizedBox(height: 20),
-          const Text('Hubungi Kami', style: TextStyle(fontWeight: FontWeight.w700, color: _textPrimaryColor)),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Icon(Icons.email_outlined, size: 16, color: _textSecondaryColor),
-              const SizedBox(width: 8),
-              Text('support@obesitycheck.id', style: TextStyle(color: _textSecondaryColor, fontSize: 13)),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _buildSocialIcon(Icons.language_outlined),
-              const SizedBox(width: 12),
-              _buildSocialIcon(Icons.email_outlined),
-              const SizedBox(width: 12),
-              _buildSocialIcon(Icons.phone_outlined),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Center(
-            child: Text(
-              '© 2024 ObesityCheck. All rights reserved.',
-              style: TextStyle(color: _textTertiaryColor, fontSize: 11),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFooterLink(String title) {
+  // ── Stats row ──────────────────────────────────────────────────
+  Widget _stats() {
+    final items = [
+      ('10K+', 'Pengguna'),
+      ('98%',  'Akurasi'),
+      ('24/7', 'Support'),
+    ];
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(title, style: TextStyle(color: _textSecondaryColor, fontSize: 13)),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: items.asMap().entries.map((e) {
+          final isLast = e.key == items.length - 1;
+          return Expanded(
+            child: Container(
+              margin: EdgeInsets.only(right: isLast ? 0 : 10),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: _neutral200),
+              ),
+              child: Column(children: [
+                Text(
+                  e.value.$1,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: _green700,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  e.value.$2,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: _neutral400,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ]),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 
-  Widget _buildSocialIcon(IconData icon) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: _surfaceColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _borderColor, width: 1),
+  // ── Service card ───────────────────────────────────────────────
+  Widget _card({
+    required IconData icon,
+    required String title,
+    required String desc,
+    required VoidCallback onTap,
+    String? badge,
+    Color? badgeColor,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: _neutral200),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            )
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: _green50,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(icon, color: _green700, size: 26),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: _neutral900,
+                      ),
+                    ),
+                    if (badge != null) ...[
+                      const SizedBox(width: 7),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: badgeColor ?? _green100,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          badge,
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: badgeColor != null
+                                ? Colors.white
+                                : _green700,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ]),
+                  const SizedBox(height: 4),
+                  Text(
+                    desc,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: _neutral400,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: _neutral100,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.arrow_forward_ios_rounded,
+                  size: 12, color: _neutral600),
+            ),
+          ],
+        ),
       ),
-      child: Icon(icon, size: 18, color: _textSecondaryColor),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _surfaceColor,
-      body: Column(
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  _buildHeader(),
-                  const SizedBox(height: 24),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Layanan Kami',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _textPrimaryColor),
-                        ),
-                        const SizedBox(height: 16),
-                        _buildServiceCard(
-                          icon: Icons.monitor_weight_rounded,
-                          title: 'Cek BMI',
-                          description: 'Hitung indeks massa tubuh secara presisi berdasarkan berat, tinggi, dan usia.',
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BmiPage())),
-                          badge: 'GRATIS',
-                        ),
-                        _buildServiceCard(
-                          icon: Icons.chat_bubble_outline_rounded,
-                          title: 'SiObe Assistant',
-                          description: 'Chat interaktif dengan asisten kesehatan virtual 24/7 untuk konsultasi cepat.',
-                          onTap: () => _handleProtectedFeature(() => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatPage()))),
-                          badge: 'NEW',
-                        ),
-                        _buildServiceCard(
-                          icon: Icons.favorite_rounded,
-                          title: 'Konsultasi Ahli',
-                          description: 'Dapatkan rekomendasi kesehatan dan nutrisi dari ahli gizi terpercaya.',
-                          onTap: () => _handleDevelopmentFeature(),
-                        ),
-                        _buildServiceCard(
-                          icon: Icons.history_rounded,
-                          title: 'Riwayat BMI',
-                          description: 'Pantau progres kesehatan dengan grafik riwayat yang mudah dipahami.',
-                          onTap: () => _handleDevelopmentFeature(),
-                        ),
-                      ],
-                    ),
-                  ),
-                  _buildFooter(),
-                ],
+          Container(
+            color: _neutral50,
+            child: Column(children: [
+              _topBar(),
+              const SizedBox(height: 20),
+              _hero(),
+              const SizedBox(height: 20),
+              _stats(),
+              const SizedBox(height: 28),
+            ]),
+          ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Text(
+              'Layanan Kami',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: _neutral900,
+                letterSpacing: -0.2,
               ),
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(children: [
+              _card(
+                icon : Icons.monitor_weight_rounded,
+                title: 'Cek BMI',
+                desc : 'Hitung indeks massa tubuh berdasarkan berat '
+                    'dan tinggi badan secara presisi.',
+                onTap: () => widget.onSwitchTab(1),
+                badge: 'GRATIS',
+              ),
+              _card(
+                icon      : Icons.chat_bubble_rounded,
+                title     : 'SiObe Assistant',
+                desc      : 'Chat dengan asisten kesehatan virtual 24/7 '
+                    'untuk konsultasi cepat.',
+                onTap     : () => widget.onSwitchTab(2),
+                badge     : 'NEW',
+                badgeColor: const Color(0xFF6366F1),
+              ),
+              _card(
+                icon      : Icons.psychology_rounded,
+                title     : 'Prediksi Obesitas',
+                desc      : 'Prediksi kategori obesitas dengan AI '
+                    'berdasarkan data fisik dan gaya hidup.',
+                onTap     : () => widget.onSwitchTab(3),
+                badge     : 'AI',
+                badgeColor: const Color(0xFFEC4899),
+              ),
+              _card(
+                icon      : Icons.article_rounded,
+                title     : 'Baca Artikel',
+                desc      : 'Temukan artikel kesehatan, tips nutrisi, '
+                    'dan gaya hidup sehat terpercaya.',
+                onTap     : () => widget.onSwitchTab(4),
+                badge     : 'INFO',
+                badgeColor: const Color(0xFFF59E0B),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 24),
         ],
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: _cardColor,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          selectedItemColor: _primaryColor,
-          unselectedItemColor: _textSecondaryColor,
-          type: BottomNavigationBarType.fixed,
-          elevation: 0,
-          backgroundColor: _cardColor,
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
-          unselectedLabelStyle: const TextStyle(fontSize: 11),
-          onTap: (index) {
-            setState(() => _currentIndex = index);
+    );
+  }
+}
 
-            switch (index) {
-              case 0:
-                break;
-              case 1:
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const BmiPage()));
-                break;
-                case 2:
-                  _handleDevelopmentFeature();
-                  break;
-                case 3:
-                  _handleProtectedFeature(() => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatPage())));
-                  break;
-                case 4:
-                  _handleDevelopmentFeature();
-                  break;
-            }
-          },
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home_rounded), label: 'Beranda'),
-            BottomNavigationBarItem(icon: Icon(Icons.monitor_weight_outlined), activeIcon: Icon(Icons.monitor_weight_rounded), label: 'Cek BMI'),
-            BottomNavigationBarItem(icon: Icon(Icons.history_outlined), activeIcon: Icon(Icons.history_rounded), label: 'Riwayat'),
-            BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), activeIcon: Icon(Icons.chat_bubble), label: 'SiObe'),
-            BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person_rounded), label: 'Profil'),
+// ─────────────────────────────────────────────
+//  TAB 4 — Artikel (placeholder)
+// ─────────────────────────────────────────────
+class _ArticleTab extends StatelessWidget {
+  const _ArticleTab();
+
+  @override
+  Widget build(BuildContext context) {
+    const green700   = Color(0xFF047857);
+    const neutral400 = Color(0xFF9CA3AF);
+    const neutral900 = Color(0xFF111827);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF9FAFB),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        automaticallyImplyLeading: false,
+        title: const Text(
+          'Artikel Kesehatan',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w800,
+            color: neutral900,
+            letterSpacing: -0.3,
+          ),
+        ),
+        centerTitle: true,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark,
+        ),
+      ),
+      body: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircleAvatar(
+              radius: 40,
+              backgroundColor: Color(0xFFF0FDF4),
+              child: Icon(Icons.article_rounded, color: green700, size: 40),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Segera Hadir',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: neutral900,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Fitur artikel sedang dalam pengembangan.',
+              style: TextStyle(fontSize: 13, color: neutral400),
+            ),
           ],
         ),
       ),

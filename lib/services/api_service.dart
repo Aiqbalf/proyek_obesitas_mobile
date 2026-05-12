@@ -6,8 +6,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
 
-  // 🔥 GANTI INI DENGAN IP LAPTOP KAMU (cek dengan ipconfig di cmd)
-  static const String localIP = "192.168.0.138";
+  // 🔥 GANTI INI DENGAN IP LAPTOP KAM
+  //U (cek dengan ipconfig di cmd)
+  static const String localIP = "10.10.180.40";
 
   // 🔥 AUTO BASE URL → ke Laravel
   static String get baseUrl {

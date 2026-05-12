@@ -30,7 +30,7 @@ class MyApp extends StatelessWidget {
       ),
       debugShowCheckedModeBanner: false,
       title: 'SiObe',
-      home: const DashboardPage(), // langsung dashboard
+      home: const DashboardPage(),
     );
   }
 }
