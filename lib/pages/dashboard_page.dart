@@ -6,6 +6,7 @@ import 'bmi_page.dart';
 import 'chat_page.dart';
 import 'obesity_predict_page.dart';
 import 'profile_page.dart';
+import 'article_page.dart';
 
 // ─────────────────────────────────────────────
 //  SHELL — satu Scaffold, bottom nav selalu ada
@@ -18,7 +19,7 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage>
-    with WidgetsBindingObserver {  // 🔥 tambah WidgetsBindingObserver
+    with WidgetsBindingObserver {
   int  _currentIndex = 0;
   bool _isLogin      = false;
 
@@ -31,47 +32,40 @@ class _DashboardPageState extends State<DashboardPage>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this); // 🔥 daftarkan observer
+    WidgetsBinding.instance.addObserver(this);
     _checkLogin();
   }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this); // 🔥 bersihkan observer
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
-  // 🔥 Dipanggil otomatis saat app resume dari background
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) _checkLogin();
   }
 
-  // ── _checkLogin dipanggil setiap kembali dari halaman manapun ──
   Future<void> _checkLogin() async {
     final status = await AuthService.isLoggedIn();
     if (mounted) setState(() => _isLogin = status);
   }
 
-  // ── FIX: await navigasi ke login, lalu refresh status ──────────
   Future<void> _navigateToLogin() async {
     await Navigator.push(
         context, MaterialPageRoute(builder: (_) => const LoginPage()));
-    // Setelah kembali dari LoginPage, refresh status login
     await _checkLogin();
   }
 
-  // ── FIX: navigasi ke ProfilePage — dipindah ke sini (parent)
-  //    sehingga _HomeTab tidak perlu akses Navigator parent sendiri
   Future<void> _navigateToProfile() async {
     await Navigator.push(
         context, MaterialPageRoute(builder: (_) => const ProfilePage()));
-    // Refresh setelah kembali (antisipasi jika user logout dari ProfilePage)
     await _checkLogin();
   }
 
   void _switchTab(int index) {
-    const protectedTabs = {2, 3, 4};
+    const protectedTabs = {2, 3};
     if (protectedTabs.contains(index) && !_isLogin) {
       _showLoginSheet();
       return;
@@ -95,16 +89,14 @@ class _DashboardPageState extends State<DashboardPage>
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 40,
-              height: 4,
+              width: 40, height: 4,
               decoration: BoxDecoration(
                   color: _neutral200,
                   borderRadius: BorderRadius.circular(4)),
             ),
             const SizedBox(height: 28),
             Container(
-              width: 72,
-              height: 72,
+              width: 72, height: 72,
               decoration: BoxDecoration(
                 color: const Color(0xFFF0FDF4),
                 shape: BoxShape.circle,
@@ -114,24 +106,16 @@ class _DashboardPageState extends State<DashboardPage>
                   color: _green700, size: 34),
             ),
             const SizedBox(height: 20),
-            const Text(
-              'Login Diperlukan',
-              style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: _neutral900,
-                  letterSpacing: -0.3),
-            ),
+            const Text('Login Diperlukan',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800,
+                  color: _neutral900, letterSpacing: -0.3)),
             const SizedBox(height: 8),
-            const Text(
-              'Silakan login untuk mengakses fitur ini.',
+            const Text('Silakan login untuk mengakses fitur ini.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: _neutral400, height: 1.5),
-            ),
+              style: TextStyle(fontSize: 14, color: _neutral400, height: 1.5)),
             const SizedBox(height: 28),
             SizedBox(
-              width: double.infinity,
-              height: 52,
+              width: double.infinity, height: 52,
               child: ElevatedButton(
                 onPressed: () async {
                   Navigator.pop(context);
@@ -145,16 +129,14 @@ class _DashboardPageState extends State<DashboardPage>
                   elevation: 0,
                 ),
                 child: const Text('Login Sekarang',
-                    style:
-                        TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
               ),
             ),
             const SizedBox(height: 12),
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text('Nanti Saja',
-                  style: TextStyle(
-                      color: _neutral400, fontWeight: FontWeight.w500)),
+                  style: TextStyle(color: _neutral400, fontWeight: FontWeight.w500)),
             ),
           ],
         ),
@@ -173,19 +155,17 @@ class _DashboardPageState extends State<DashboardPage>
       body: IndexedStack(
         index: _currentIndex,
         children: [
-          // ── FIX: ValueKey memaksa Flutter rebuild _HomeTab
-          //    setiap kali _isLogin berubah (true ↔ false) ───────────
           _HomeTab(
-            key              : ValueKey(_isLogin), // 🔥 FIX UTAMA
-            isLogin          : _isLogin,
-            onNavigateToLogin: _navigateToLogin,
+            key                : ValueKey(_isLogin),
+            isLogin            : _isLogin,
+            onNavigateToLogin  : _navigateToLogin,
             onNavigateToProfile: _navigateToProfile,
-            onSwitchTab      : _switchTab,
+            onSwitchTab        : _switchTab,
           ),
           const BmiPage(embedded: true),
           ChatPage(embedded: true),
           ObesityPredictPage(embedded: true),
-          const _ArticleTab(),
+          const ArticlePage(embedded: true),
         ],
       ),
       bottomNavigationBar: Container(
@@ -198,16 +178,11 @@ class _DashboardPageState extends State<DashboardPage>
             height: 64,
             child: Row(
               children: [
-                _navItem(0, Icons.home_rounded,
-                    Icons.home_outlined, 'Beranda'),
-                _navItem(1, Icons.monitor_weight_rounded,
-                    Icons.monitor_weight_outlined, 'BMI'),
-                _navItem(2, Icons.chat_bubble_rounded,
-                    Icons.chat_bubble_outline, 'SiObe'),
-                _navItem(3, Icons.psychology_rounded,
-                    Icons.psychology_outlined, 'Prediksi'),
-                _navItem(4, Icons.article_rounded,
-                    Icons.article_outlined, 'Artikel'),
+                _navItem(0, Icons.home_rounded,           Icons.home_outlined,           'Beranda'),
+                _navItem(1, Icons.monitor_weight_rounded, Icons.monitor_weight_outlined, 'BMI'),
+                _navItem(2, Icons.chat_bubble_rounded,    Icons.chat_bubble_outline,     'SiObe'),
+                _navItem(3, Icons.psychology_rounded,     Icons.psychology_outlined,     'Prediksi'),
+                _navItem(4, Icons.article_rounded,        Icons.article_outlined,        'Artikel'),
               ],
             ),
           ),
@@ -229,8 +204,7 @@ class _DashboardPageState extends State<DashboardPage>
             AnimatedContainer(
               duration: const Duration(milliseconds: 220),
               curve: Curves.easeOut,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
                 color: isActive ? _green100 : Colors.transparent,
                 borderRadius: BorderRadius.circular(12),
@@ -242,14 +216,12 @@ class _DashboardPageState extends State<DashboardPage>
               ),
             ),
             const SizedBox(height: 2),
-            Text(
-              label,
+            Text(label,
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                 color: isActive ? _green700 : _neutral400,
-              ),
-            ),
+              )),
           ],
         ),
       ),
@@ -263,15 +235,16 @@ class _DashboardPageState extends State<DashboardPage>
 class _HomeTab extends StatefulWidget {
   final bool isLogin;
   final Future<void> Function() onNavigateToLogin;
-  final Future<void> Function() onNavigateToProfile; // 🔥 FIX: tambah parameter
+  final Future<void> Function() onNavigateToProfile;
   final void Function(int) onSwitchTab;
 
   const _HomeTab({
+    required Key key,
     required this.isLogin,
     required this.onNavigateToLogin,
-    required this.onNavigateToProfile, // 🔥 FIX
-    required this.onSwitchTab, required ValueKey<bool> key,
-  });
+    required this.onNavigateToProfile,
+    required this.onSwitchTab,
+  }) : super(key: key);
 
   @override
   State<_HomeTab> createState() => _HomeTabState();
@@ -292,17 +265,16 @@ class _HomeTabState extends State<_HomeTab>
   static const Color _neutral900 = Color(0xFF111827);
 
   late AnimationController _anim;
-  late Animation<double>  _fade;
-  late Animation<Offset>  _slide;
+  late Animation<double>   _fade;
+  late Animation<Offset>   _slide;
 
   @override
   void initState() {
     super.initState();
     _anim = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 650));
-    _fade = CurvedAnimation(parent: _anim, curve: Curves.easeOut);
-    _slide = Tween<Offset>(
-            begin: const Offset(0, 0.06), end: Offset.zero)
+    _fade  = CurvedAnimation(parent: _anim, curve: Curves.easeOut);
+    _slide = Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero)
         .animate(CurvedAnimation(parent: _anim, curve: Curves.easeOut));
     _anim.forward();
   }
@@ -313,201 +285,154 @@ class _HomeTabState extends State<_HomeTab>
     super.dispose();
   }
 
-  // ── Top bar ─────────────────────────────────────────────────────
+  // ── Top bar ──
   Widget _topBar() => Padding(
-        padding: EdgeInsets.fromLTRB(
-            16, MediaQuery.of(context).padding.top + 12, 16, 0),
-        child: Row(
-          children: [
-            // Logo
-            Container(
-              padding: const EdgeInsets.all(9),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [_green500, _green700],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Icon(Icons.health_and_safety_rounded,
-                  color: Colors.white, size: 20),
+    padding: EdgeInsets.fromLTRB(
+        16, MediaQuery.of(context).padding.top + 12, 16, 0),
+    child: Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(9),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [_green500, _green700],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            const SizedBox(width: 10),
-            const Text(
-              'ObesityCheck',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: _neutral900,
-                letterSpacing: -0.4,
-              ),
-            ),
-            const Spacer(),
-
-            // 🔥 FIX: tombol avatar memanggil widget.onNavigateToProfile
-            //         (bukan Navigator.push langsung dari sini)
-            if (!widget.isLogin)
-              GestureDetector(
-                onTap: widget.onNavigateToLogin,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 9),
-                  decoration: BoxDecoration(
-                    color: _green700,
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: const Text(
-                    'Login',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              )
-            else
-              GestureDetector(
-                onTap: widget.onNavigateToProfile, // 🔥 FIX: pakai callback
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: _green50,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: _green100, width: 1.5),
-                  ),
-                  child: const Icon(Icons.person_rounded,
-                      color: _green700, size: 22),
-                ),
-              ),
-          ],
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: const Icon(Icons.health_and_safety_rounded,
+              color: Colors.white, size: 20),
         ),
-      );
-
-  // ── Hero banner ────────────────────────────────────────────────
-  Widget _hero() => FadeTransition(
-        opacity: _fade,
-        child: SlideTransition(
-          position: _slide,
-          child: Container(
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [_green700, _green900],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: [
-                BoxShadow(
-                  color: _green700.withOpacity(0.35),
-                  blurRadius: 24,
-                  offset: const Offset(0, 10),
-                )
-              ],
+        const SizedBox(width: 10),
+        const Text('ObesityCheck',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800,
+              color: _neutral900, letterSpacing: -0.4)),
+        const Spacer(),
+        if (!widget.isLogin)
+          GestureDetector(
+            onTap: widget.onNavigateToLogin,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+              decoration: BoxDecoration(
+                  color: _green700,
+                  borderRadius: BorderRadius.circular(24)),
+              child: const Text('Login',
+                style: TextStyle(color: Colors.white,
+                    fontWeight: FontWeight.w700, fontSize: 13)),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Text(
-                          'KUIS KESEHATAN',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      const Text(
-                        'Cek Risiko\nObesitas',
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                          height: 1.15,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'BMI akurat & konsultasi ahli gizi',
-                        style: TextStyle(
-                            color: Colors.white.withOpacity(0.75),
-                            fontSize: 13),
-                      ),
-                      const SizedBox(height: 20),
-                      GestureDetector(
-                        onTap: () => widget.onSwitchTab(1),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Mulai Cek',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: _green700,
-                                ),
-                              ),
-                              SizedBox(width: 6),
-                              Icon(Icons.arrow_forward_rounded,
-                                  size: 16, color: _green700),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: Image.asset(
-                    'assets/img/gambar_awal.png',
-                    width: 110,
-                    height: 160,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      width: 110,
-                      height: 160,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Icon(Icons.fitness_center,
-                          size: 48, color: Colors.white),
-                    ),
-                  ),
-                ),
-              ],
+          )
+        else
+          GestureDetector(
+            onTap: widget.onNavigateToProfile,
+            child: Container(
+              width: 40, height: 40,
+              decoration: BoxDecoration(
+                color: _green50, shape: BoxShape.circle,
+                border: Border.all(color: _green100, width: 1.5),
+              ),
+              child: const Icon(Icons.person_rounded,
+                  color: _green700, size: 22),
             ),
           ),
-        ),
-      );
+      ],
+    ),
+  );
 
-  // ── Stats row ──────────────────────────────────────────────────
+  // ── Hero banner ──
+  Widget _hero() => FadeTransition(
+    opacity: _fade,
+    child: SlideTransition(
+      position: _slide,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [_green700, _green900],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(color: _green700.withOpacity(0.35),
+                blurRadius: 24, offset: const Offset(0, 10))
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text('KUIS KESEHATAN',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
+                          color: Colors.white, letterSpacing: 1)),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text('Cek Risiko\nObesitas',
+                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900,
+                        color: Colors.white, height: 1.15, letterSpacing: -0.5)),
+                  const SizedBox(height: 8),
+                  Text('BMI akurat & konsultasi ahli gizi',
+                    style: TextStyle(
+                        color: Colors.white.withOpacity(0.75), fontSize: 13)),
+                  const SizedBox(height: 20),
+                  GestureDetector(
+                    onTap: () => widget.onSwitchTab(1),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 12),
+                      decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14)),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('Mulai Cek',
+                            style: TextStyle(fontSize: 14,
+                                fontWeight: FontWeight.w700, color: _green700)),
+                          SizedBox(width: 6),
+                          Icon(Icons.arrow_forward_rounded,
+                              size: 16, color: _green700),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Image.asset(
+                'assets/img/gambar_awal.png',
+                width: 110, height: 160, fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 110, height: 160,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Icon(Icons.fitness_center,
+                      size: 48, color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  // ── Stats row ──
   Widget _stats() {
     final items = [
       ('10K+', 'Pengguna'),
@@ -529,24 +454,13 @@ class _HomeTabState extends State<_HomeTab>
                 border: Border.all(color: _neutral200),
               ),
               child: Column(children: [
-                Text(
-                  e.value.$1,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: _green700,
-                    letterSpacing: -0.5,
-                  ),
-                ),
+                Text(e.value.$1,
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900,
+                      color: _green700, letterSpacing: -0.5)),
                 const SizedBox(height: 2),
-                Text(
-                  e.value.$2,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: _neutral400,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                Text(e.value.$2,
+                  style: const TextStyle(fontSize: 11, color: _neutral400,
+                      fontWeight: FontWeight.w500)),
               ]),
             ),
           );
@@ -555,7 +469,7 @@ class _HomeTabState extends State<_HomeTab>
     );
   }
 
-  // ── Service card ───────────────────────────────────────────────
+  // ── Service card ──
   Widget _card({
     required IconData icon,
     required String title,
@@ -574,22 +488,16 @@ class _HomeTabState extends State<_HomeTab>
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: _neutral200),
           boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            )
+            BoxShadow(color: Colors.black.withOpacity(0.03),
+                blurRadius: 10, offset: const Offset(0, 4))
           ],
         ),
         child: Row(
           children: [
             Container(
-              width: 52,
-              height: 52,
+              width: 52, height: 52,
               decoration: BoxDecoration(
-                color: _green50,
-                borderRadius: BorderRadius.circular(16),
-              ),
+                  color: _green50, borderRadius: BorderRadius.circular(16)),
               child: Icon(icon, color: _green700, size: 26),
             ),
             const SizedBox(width: 14),
@@ -598,14 +506,9 @@ class _HomeTabState extends State<_HomeTab>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: _neutral900,
-                      ),
-                    ),
+                    Text(title,
+                      style: const TextStyle(fontSize: 15,
+                          fontWeight: FontWeight.w700, color: _neutral900)),
                     if (badge != null) ...[
                       const SizedBox(width: 7),
                       Container(
@@ -615,42 +518,30 @@ class _HomeTabState extends State<_HomeTab>
                           color: badgeColor ?? _green100,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text(
-                          badge,
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                            color: badgeColor != null
-                                ? Colors.white
-                                : _green700,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
+                        child: Text(badge,
+                          style: TextStyle(fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              color: badgeColor != null
+                                  ? Colors.white
+                                  : _green700,
+                              letterSpacing: 0.3)),
                       ),
                     ],
                   ]),
                   const SizedBox(height: 4),
-                  Text(
-                    desc,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: _neutral400,
-                      height: 1.4,
-                    ),
-                  ),
+                  Text(desc,
+                    maxLines: 2, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12,
+                        color: _neutral400, height: 1.4)),
                 ],
               ),
             ),
             const SizedBox(width: 10),
             Container(
-              width: 32,
-              height: 32,
+              width: 32, height: 32,
               decoration: BoxDecoration(
-                color: _neutral100,
-                borderRadius: BorderRadius.circular(10),
-              ),
+                  color: _neutral100,
+                  borderRadius: BorderRadius.circular(10)),
               child: const Icon(Icons.arrow_forward_ios_rounded,
                   size: 12, color: _neutral600),
             ),
@@ -680,122 +571,52 @@ class _HomeTabState extends State<_HomeTab>
           ),
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: Text(
-              'Layanan Kami',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: _neutral900,
-                letterSpacing: -0.2,
-              ),
-            ),
+            child: Text('Layanan Kami',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800,
+                  color: _neutral900, letterSpacing: -0.2)),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(children: [
               _card(
-                icon : Icons.monitor_weight_rounded,
+                icon: Icons.monitor_weight_rounded,
                 title: 'Cek BMI',
-                desc : 'Hitung indeks massa tubuh berdasarkan berat '
+                desc: 'Hitung indeks massa tubuh berdasarkan berat '
                     'dan tinggi badan secara presisi.',
                 onTap: () => widget.onSwitchTab(1),
                 badge: 'GRATIS',
               ),
               _card(
-                icon      : Icons.chat_bubble_rounded,
-                title     : 'SiObe Assistant',
-                desc      : 'Chat dengan asisten kesehatan virtual 24/7 '
+                icon: Icons.chat_bubble_rounded,
+                title: 'SiObe Assistant',
+                desc: 'Chat dengan asisten kesehatan virtual 24/7 '
                     'untuk konsultasi cepat.',
-                onTap     : () => widget.onSwitchTab(2),
-                badge     : 'NEW',
+                onTap: () => widget.onSwitchTab(2),
+                badge: 'NEW',
                 badgeColor: const Color(0xFF6366F1),
               ),
               _card(
-                icon      : Icons.psychology_rounded,
-                title     : 'Prediksi Obesitas',
-                desc      : 'Prediksi kategori obesitas dengan AI '
+                icon: Icons.psychology_rounded,
+                title: 'Prediksi Obesitas',
+                desc: 'Prediksi kategori obesitas dengan AI '
                     'berdasarkan data fisik dan gaya hidup.',
-                onTap     : () => widget.onSwitchTab(3),
-                badge     : 'AI',
+                onTap: () => widget.onSwitchTab(3),
+                badge: 'AI',
                 badgeColor: const Color(0xFFEC4899),
               ),
               _card(
-                icon      : Icons.article_rounded,
-                title     : 'Baca Artikel',
-                desc      : 'Temukan artikel kesehatan, tips nutrisi, '
+                icon: Icons.article_rounded,
+                title: 'Baca Artikel',
+                desc: 'Temukan artikel kesehatan, tips nutrisi, '
                     'dan gaya hidup sehat terpercaya.',
-                onTap     : () => widget.onSwitchTab(4),
-                badge     : 'INFO',
+                onTap: () => widget.onSwitchTab(4),
+                badge: 'INFO',
                 badgeColor: const Color(0xFFF59E0B),
               ),
             ]),
           ),
           const SizedBox(height: 24),
         ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────
-//  TAB 4 — Artikel (placeholder)
-// ─────────────────────────────────────────────
-class _ArticleTab extends StatelessWidget {
-  const _ArticleTab();
-
-  @override
-  Widget build(BuildContext context) {
-    const green700   = Color(0xFF047857);
-    const neutral400 = Color(0xFF9CA3AF);
-    const neutral900 = Color(0xFF111827);
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        automaticallyImplyLeading: false,
-        title: const Text(
-          'Artikel Kesehatan',
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w800,
-            color: neutral900,
-            letterSpacing: -0.3,
-          ),
-        ),
-        centerTitle: true,
-        systemOverlayStyle: const SystemUiOverlayStyle(
-          statusBarColor: Colors.transparent,
-          statusBarIconBrightness: Brightness.dark,
-        ),
-      ),
-      body: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircleAvatar(
-              radius: 40,
-              backgroundColor: Color(0xFFF0FDF4),
-              child: Icon(Icons.article_rounded, color: green700, size: 40),
-            ),
-            SizedBox(height: 16),
-            Text(
-              'Segera Hadir',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: neutral900,
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Fitur artikel sedang dalam pengembangan.',
-              style: TextStyle(fontSize: 13, color: neutral400),
-            ),
-          ],
-        ),
       ),
     );
   }
