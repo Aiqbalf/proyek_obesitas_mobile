@@ -11,14 +11,14 @@ class ApiService {
 
   // ── Base URL otomatis sesuai platform ──
   static String get baseUrl {
-    if (kIsWeb) {
-      return "http://localhost:8000/api";
-    } else if (Platform.isAndroid) {
-      return "http://$localIP:8000/api";
-    } else {
-      return "http://$localIP:8000/api";
-    }
+  if (kIsWeb) {
+    return "http://127.0.0.1:8000/api"; // ✅ ganti
+  } else if (Platform.isAndroid) {
+    return "http://$localIP:8000/api";
+  } else {
+    return "http://$localIP:8000/api";
   }
+}
 
   // ══════════════════════════════════════
   //  LOGIN

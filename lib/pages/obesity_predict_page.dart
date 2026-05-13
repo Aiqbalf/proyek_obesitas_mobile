@@ -1,36 +1,53 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/obesity_service.dart';
 
 class ObesityPredictPage extends StatefulWidget {
-  const ObesityPredictPage({super.key, required bool embedded});
+  final bool embedded;
+  const ObesityPredictPage({super.key, this.embedded = false});
 
   @override
   State<ObesityPredictPage> createState() => _ObesityPredictPageState();
 }
 
 class _ObesityPredictPageState extends State<ObesityPredictPage> {
-  // ── Page Controller ─────────────────────────────────────
-  final PageController _pageController = PageController();
-  int _currentStep = 0;
-  final int _totalSteps = 4; // Step 0–3 (hasil tampil di step 3 setelah submit)
+
+  // ── Palette ──
+  static const Color _teal700   = Color(0xFF00796B);
+  static const Color _teal500   = Color(0xFF009688);
+  static const Color _teal50    = Color(0xFFE0F2F1);
+  static const Color _neutral50  = Color(0xFFF5F7FA);
+  static const Color _neutral100 = Color(0xFFEEEEEE);
+  static const Color _neutral200 = Color(0xFFE0E0E0);
+  static const Color _neutral400 = Color(0xFF9E9E9E);
+  static const Color _neutral600 = Color(0xFF616161);
+  static const Color _neutral900 = Color(0xFF212121);
+
+  // ── Wizard state ──
+  final _pageCtrl   = PageController();
+  int  _currentStep = 0;
+  static const int _totalSteps = 4;
 
   bool _isLoading = false;
+  bool _isSaving  = false;
+  bool _isSaved   = false;
   Map<String, dynamic>? _result;
 
-  // ── Form Keys per Step ───────────────────────────────────
   final _formKeys = List.generate(4, (_) => GlobalKey<FormState>());
 
-  // ── Controllers ──────────────────────────────────────────
-  final _usiaCtrl      = TextEditingController(text: '22');
-  final _tinggiCtrl    = TextEditingController(text: '1.70');
-  final _beratCtrl     = TextEditingController(text: '65.0');
-  final _sayurCtrl     = TextEditingController(text: '2.0');
-  final _makanCtrl     = TextEditingController(text: '3');
-  final _airCtrl       = TextEditingController(text: '2.0');
-  final _aktivitasCtrl = TextEditingController(text: '1.0');
-  final _layarCtrl     = TextEditingController(text: '1.0');
+  // ── Controllers — kosong ──
+  final _usiaCtrl      = TextEditingController();
+  final _tinggiCtrl    = TextEditingController();
+  final _beratCtrl     = TextEditingController();
+  final _sayurCtrl     = TextEditingController();
+  final _makanCtrl     = TextEditingController();
+  final _airCtrl       = TextEditingController();
+  final _aktivitasCtrl = TextEditingController();
+  final _layarCtrl     = TextEditingController();
 
-  // ── Dropdowns ────────────────────────────────────────────
+  // ── Dropdowns ──
   String _jenisKelamin = 'Laki-laki';
   String _alkohol      = 'Tidak';
   String _kaloriTinggi = 'Tidak';
@@ -40,80 +57,82 @@ class _ObesityPredictPageState extends State<ObesityPredictPage> {
   String _ngamil       = 'Kadang';
   String _transport    = 'Motor';
 
+  // ── Laravel base URL (sesuai Laragon virtual host) ──
+  static const String _baseUrl = 'http://127.0.0.1:8000/api';
+
   @override
   void dispose() {
-    _pageController.dispose();
-    _usiaCtrl.dispose();
-    _tinggiCtrl.dispose();
-    _beratCtrl.dispose();
-    _sayurCtrl.dispose();
-    _makanCtrl.dispose();
-    _airCtrl.dispose();
-    _aktivitasCtrl.dispose();
-    _layarCtrl.dispose();
+    _pageCtrl.dispose();
+    for (final c in [_usiaCtrl, _tinggiCtrl, _beratCtrl, _sayurCtrl,
+        _makanCtrl, _airCtrl, _aktivitasCtrl, _layarCtrl]) {
+      c.dispose();
+    }
     super.dispose();
   }
 
   // ════════════════════════════════════════════════════════
-  //  HELPER — warna & teks
+  //  HELPERS
   // ════════════════════════════════════════════════════════
-  Color _getKategoriColor(String k) {
+  Color _kategoriColor(String k) {
     switch (k) {
-      case 'Kurus':                return Colors.blue;
-      case 'Normal':               return Colors.green;
-      case 'Overweight_Tingkat_1': return Colors.yellow.shade700;
-      case 'Overweight_Tingkat_2': return Colors.orange;
-      case 'Obesitas_Tipe_1':      return Colors.red.shade300;
-      case 'Obesitas_Tipe_2':      return Colors.red.shade600;
-      case 'Obesitas_Tipe_3':      return Colors.red.shade900;
-      default:                     return Colors.grey;
+      case 'Kurus':                return const Color(0xFF2196F3);
+      case 'Normal':               return const Color(0xFF4CAF50);
+      case 'Overweight_Tingkat_1': return const Color(0xFFFFC107);
+      case 'Overweight_Tingkat_2': return const Color(0xFFFF9800);
+      case 'Obesitas_Tipe_1':      return const Color(0xFFFF5722);
+      case 'Obesitas_Tipe_2':      return const Color(0xFFF44336);
+      case 'Obesitas_Tipe_3':      return const Color(0xFFB71C1C);
+      default:                     return _neutral400;
     }
   }
 
-  String _getRekomendasi(String k) {
+  String _rekomendasi(String k) {
     switch (k) {
       case 'Kurus':
-        return 'Tingkatkan asupan kalori bergizi. Konsultasi dengan ahli '
-            'gizi untuk program penambahan berat badan yang sehat.';
+        return 'Tingkatkan asupan kalori bergizi. Konsultasi dengan ahli gizi untuk program penambahan berat badan yang sehat.';
       case 'Normal':
-        return 'Pertahankan pola makan sehat dan aktivitas fisik rutin. '
-            'Anda berada di kondisi ideal!';
+        return 'Pertahankan pola makan sehat dan aktivitas fisik rutin. Anda berada di kondisi ideal!';
       case 'Overweight_Tingkat_1':
-        return 'Kurangi makanan tinggi kalori, tingkatkan aktivitas fisik '
-            'minimal 30 menit/hari.';
+        return 'Kurangi makanan tinggi kalori, tingkatkan aktivitas fisik minimal 30 menit/hari.';
       case 'Overweight_Tingkat_2':
-        return 'Konsultasi dokter. Perlu diet ketat, hindari makanan '
-            'berlemak, dan olahraga teratur.';
+        return 'Konsultasi dokter. Perlu diet ketat, hindari makanan berlemak, dan olahraga teratur.';
       case 'Obesitas_Tipe_1':
-        return 'Segera konsultasi dokter. Diet rendah kalori dan olahraga '
-            'rutin sangat dianjurkan.';
+        return 'Segera konsultasi dokter. Diet rendah kalori dan olahraga rutin sangat dianjurkan.';
       case 'Obesitas_Tipe_2':
-        return 'Konsultasi dokter spesialis. Mungkin perlu penanganan '
-            'medis dan perubahan gaya hidup drastis.';
+        return 'Konsultasi dokter spesialis. Mungkin perlu penanganan medis dan perubahan gaya hidup drastis.';
       case 'Obesitas_Tipe_3':
-        return 'Segera tangani dengan dokter spesialis. Risiko kesehatan '
-            'sangat tinggi — perlu intervensi medis segera.';
+        return 'Segera tangani dengan dokter spesialis. Risiko kesehatan sangat tinggi.';
       default:
         return 'Konsultasikan dengan tenaga medis.';
     }
+  }
+
+  void _showSnack(String msg, {required bool isError}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Row(children: [
+        Icon(isError ? Icons.error_outline_rounded : Icons.check_circle_rounded,
+            color: Colors.white, size: 18),
+        const SizedBox(width: 8),
+        Expanded(child: Text(msg, style: const TextStyle(fontSize: 13))),
+      ]),
+      backgroundColor: isError ? const Color(0xFFE53935) : const Color(0xFF43A047),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+    ));
   }
 
   // ════════════════════════════════════════════════════════
   //  NAVIGASI WIZARD
   // ════════════════════════════════════════════════════════
   void _nextStep() {
-    // Validasi form step saat ini
     if (!_formKeys[_currentStep].currentState!.validate()) return;
-
     if (_currentStep < _totalSteps - 1) {
       setState(() => _currentStep++);
-      _pageController.animateToPage(
-        _currentStep,
-        duration: const Duration(milliseconds: 350),
-        curve: Curves.easeInOut,
-      );
+      _pageCtrl.animateToPage(_currentStep,
+          duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
     } else {
-      // Step terakhir → prediksi
       _predict();
     }
   }
@@ -121,28 +140,29 @@ class _ObesityPredictPageState extends State<ObesityPredictPage> {
   void _prevStep() {
     if (_currentStep > 0) {
       setState(() => _currentStep--);
-      _pageController.animateToPage(
-        _currentStep,
-        duration: const Duration(milliseconds: 350),
-        curve: Curves.easeInOut,
-      );
+      _pageCtrl.animateToPage(_currentStep,
+          duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
     }
   }
 
   void _resetWizard() {
+    for (final c in [_usiaCtrl, _tinggiCtrl, _beratCtrl, _sayurCtrl,
+        _makanCtrl, _airCtrl, _aktivitasCtrl, _layarCtrl]) {
+      c.clear();
+    }
     setState(() {
-      _currentStep = 0;
-      _result = null;
+      _currentStep = 0; _result = null; _isSaved = false;
+      _jenisKelamin = 'Laki-laki'; _alkohol = 'Tidak';
+      _kaloriTinggi = 'Tidak'; _monitoring = 'Tidak';
+      _merokok = 'Tidak'; _riwayat = 'Ya';
+      _ngamil = 'Kadang'; _transport = 'Motor';
     });
-    _pageController.animateToPage(
-      0,
-      duration: const Duration(milliseconds: 350),
-      curve: Curves.easeInOut,
-    );
+    _pageCtrl.animateToPage(0,
+        duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
   }
 
   // ════════════════════════════════════════════════════════
-  //  PREDIKSI
+  //  PREDIKSI — kirim ke Laravel → Flask
   // ════════════════════════════════════════════════════════
   Future<void> _predict() async {
     setState(() { _isLoading = true; _result = null; });
@@ -167,13 +187,93 @@ class _ObesityPredictPageState extends State<ObesityPredictPage> {
       );
       setState(() => _result = result);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-        );
-      }
+      _showSnack('Gagal prediksi: $e', isError: true);
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+
+  // ════════════════════════════════════════════════════════
+  //  SIMPAN KE MONGODB via Laravel POST /api/obesity/save
+  //  Data disimpan ke collection users → field riwayat_prediksi[]
+  // ════════════════════════════════════════════════════════
+  Future<void> _simpan() async {
+    setState(() => _isSaving = true);
+
+    try {
+      // Ambil token dari SharedPreferences
+      // ✅ SESUDAH
+final prefs = await SharedPreferences.getInstance();
+final token = prefs.getString('token') ?? 
+              prefs.getString('auth_token') ?? '';
+
+print('=== TOKEN: $token ===');
+
+if (token.isEmpty) {
+  _showSnack('Anda belum login!', isError: true);
+  return;
+}
+      // Payload yang dikirim ke Laravel
+      // Laravel akan push data ini ke users.riwayat_prediksi[]
+      final payload = {
+        'prediksi': {
+          'input': {
+            'usia'            : double.parse(_usiaCtrl.text),
+            'tinggi'          : double.parse(_tinggiCtrl.text),
+            'berat'           : double.parse(_beratCtrl.text),
+            'jenis_kelamin'   : _jenisKelamin,
+            'kalori_tinggi'   : _kaloriTinggi,
+            'konsumsi_sayur'  : double.parse(_sayurCtrl.text),
+            'makan_harian'    : int.parse(_makanCtrl.text),
+            'ngemil'          : _ngamil,
+            'konsumsi_air'    : double.parse(_airCtrl.text),
+            'alkohol'         : _alkohol,
+            'monitoring'      : _monitoring,
+            'merokok'         : _merokok,
+            'riwayat_keluarga': _riwayat,
+            'aktivitas_fisik' : double.parse(_aktivitasCtrl.text),
+            'waktu_layar'     : double.parse(_layarCtrl.text),
+            'transportasi'    : _transport,
+          },
+          'hasil': {
+            'kategori'  : _result!['kategori'],
+            'bmi'       : _result!['bmi'],
+            'confidence': _result!['confidence'],
+          },
+          'prediksi_at': DateTime.now().toIso8601String(),
+        },
+      };
+
+      print('=== SIMPAN PAYLOAD ===');
+      print(jsonEncode(payload));
+
+      final response = await http.post(
+        Uri.parse('$_baseUrl/obesity/save'),
+        headers: {
+          'Content-Type' : 'application/json',
+          'Accept'       : 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(payload),
+      ).timeout(const Duration(seconds: 15));
+
+      print('SIMPAN STATUS: ${response.statusCode}');
+      print('SIMPAN BODY: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        setState(() => _isSaved = true);
+        _showSnack('Hasil prediksi berhasil disimpan ke akun Anda!', isError: false);
+      } else {
+        final body = jsonDecode(response.body);
+        _showSnack(body['message'] ?? 'Gagal menyimpan data.', isError: true);
+      }
+
+    } on http.ClientException catch (e) {
+      _showSnack('Tidak dapat terhubung ke server: ${e.message}', isError: true);
+    } catch (e) {
+      _showSnack('Error: $e', isError: true);
+    } finally {
+      setState(() => _isSaving = false);
     }
   }
 
@@ -183,25 +283,24 @@ class _ObesityPredictPageState extends State<ObesityPredictPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: _neutral50,
       appBar: AppBar(
-        title: const Text('Prediksi Obesitas'),
-        centerTitle: true,
-        backgroundColor: Colors.teal,
-        foregroundColor: Colors.white,
+        automaticallyImplyLeading: !widget.embedded,
+        backgroundColor: _teal700,
         elevation: 0,
+        title: const Text('Prediksi Obesitas',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700,
+              color: Colors.white)),
+        centerTitle: true,
       ),
       body: Column(
         children: [
-          // ── Progress Header ──────────────────────────────
           _buildProgressHeader(),
-
-          // ── Konten Step ─────────────────────────────────
           Expanded(
             child: _result != null
                 ? _buildHasilPage()
                 : PageView(
-                    controller: _pageController,
+                    controller: _pageCtrl,
                     physics: const NeverScrollableScrollPhysics(),
                     children: [
                       _buildStep0DataFisik(),
@@ -211,8 +310,6 @@ class _ObesityPredictPageState extends State<ObesityPredictPage> {
                     ],
                   ),
           ),
-
-          // ── Tombol Navigasi ─────────────────────────────
           if (_result == null) _buildNavBar(),
         ],
       ),
@@ -220,90 +317,83 @@ class _ObesityPredictPageState extends State<ObesityPredictPage> {
   }
 
   // ════════════════════════════════════════════════════════
-  //  PROGRESS HEADER
+  //  PROGRESS HEADER — terpusat
   // ════════════════════════════════════════════════════════
   Widget _buildProgressHeader() {
-    final steps = ['Data Fisik', 'Pola Makan', 'Gaya Hidup', 'Aktivitas'];
-    final icons = [
-      Icons.person_outline,
-      Icons.restaurant_menu,
-      Icons.local_drink,
-      Icons.directions_run,
+    final labels = ['Data Fisik', 'Pola Makan', 'Gaya Hidup', 'Aktivitas'];
+    final icons  = [
+      Icons.person_outline_rounded,
+      Icons.restaurant_menu_rounded,
+      Icons.spa_outlined,
+      Icons.directions_run_rounded,
     ];
 
     return Container(
-      color: Colors.teal,
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      color: _teal700,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: Column(
         children: [
-          // Step indicators
+          // Circles + connectors — center
           Row(
-            children: List.generate(_totalSteps, (i) {
-              final isActive   = i == _currentStep && _result == null;
-              final isDone     = i < _currentStep || _result != null;
-              final isInactive = !isActive && !isDone;
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(_totalSteps * 2 - 1, (i) {
+              if (i.isOdd) {
+                final stepIdx = i ~/ 2;
+                final passed  = stepIdx < _currentStep || _result != null;
+                return Expanded(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 400),
+                    height: 2,
+                    color: passed ? Colors.white : Colors.white30,
+                  ),
+                );
+              }
+              final idx      = i ~/ 2;
+              final isDone   = idx < _currentStep || _result != null;
+              final isActive = idx == _currentStep && _result == null;
 
-              return Expanded(
-                child: Row(
-                  children: [
-                    // Lingkaran step
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: isDone
-                            ? Colors.white
-                            : isActive
-                                ? Colors.white
-                                : Colors.teal.shade300,
-                        border: Border.all(
-                          color: Colors.white,
-                          width: isActive ? 3 : 1.5,
-                        ),
-                      ),
-                      child: Center(
-                        child: isDone
-                            ? Icon(Icons.check,
-                                color: Colors.teal, size: 18)
-                            : Icon(icons[i],
-                                color: isInactive
-                                    ? Colors.white60
-                                    : Colors.teal,
-                                size: 18),
-                      ),
-                    ),
-                    // Garis penghubung
-                    if (i < _totalSteps - 1)
-                      Expanded(
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          height: 2,
-                          color: i < _currentStep || _result != null
-                              ? Colors.white
-                              : Colors.white30,
-                        ),
-                      ),
-                  ],
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                width: isActive ? 44 : 36,
+                height: isActive ? 44 : 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isDone || isActive
+                      ? Colors.white
+                      : Colors.white.withOpacity(0.15),
+                  border: Border.all(
+                    color: isDone || isActive ? Colors.white : Colors.white38,
+                    width: isActive ? 2.5 : 1.5,
+                  ),
+                ),
+                child: Center(
+                  child: isDone
+                      ? Icon(Icons.check_rounded, color: _teal700, size: 18)
+                      : Icon(icons[idx],
+                          color: isActive ? _teal700 : Colors.white54,
+                          size: isActive ? 22 : 18),
                 ),
               );
             }),
           ),
-          const SizedBox(height: 8),
-          // Label step aktif
-          if (_result == null)
-            Text(
-              'Langkah ${_currentStep + 1} dari $_totalSteps — '
-              '${steps[_currentStep]}',
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
-            )
-          else
-            const Text(
-              '✅ Prediksi Selesai',
-              style: TextStyle(color: Colors.white, fontSize: 13,
-                  fontWeight: FontWeight.bold),
+
+          const SizedBox(height: 10),
+
+          // Status label
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(20),
             ),
+            child: Text(
+              _result != null
+                  ? '✅  Prediksi Selesai'
+                  : '${_currentStep + 1}/$_totalSteps  —  ${labels[_currentStep]}',
+              style: const TextStyle(fontSize: 12, color: Colors.white,
+                  fontWeight: FontWeight.w500),
+            ),
+          ),
         ],
       ),
     );
@@ -314,59 +404,56 @@ class _ObesityPredictPageState extends State<ObesityPredictPage> {
   // ════════════════════════════════════════════════════════
   Widget _buildNavBar() {
     final isLast = _currentStep == _totalSteps - 1;
-
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-      decoration: BoxDecoration(
+      padding: EdgeInsets.fromLTRB(16, 12, 16,
+          MediaQuery.of(context).padding.bottom + 12),
+      decoration: const BoxDecoration(
         color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8)],
+        border: Border(top: BorderSide(color: _neutral100)),
       ),
       child: Row(
         children: [
-          // Tombol Kembali
-          if (_currentStep > 0)
+          if (_currentStep > 0) ...[
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: _prevStep,
-                icon: const Icon(Icons.arrow_back_ios, size: 16),
+                icon: const Icon(Icons.arrow_back_ios_rounded, size: 14),
                 label: const Text('Kembali'),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.teal,
-                  side: const BorderSide(color: Colors.teal),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  foregroundColor: _teal700,
+                  side: const BorderSide(color: _teal700, width: 1.5),
+                  padding: const EdgeInsets.symmetric(vertical: 13),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
+                      borderRadius: BorderRadius.circular(12)),
                 ),
               ),
             ),
-          if (_currentStep > 0) const SizedBox(width: 12),
-
-          // Tombol Lanjut / Prediksi
+            const SizedBox(width: 12),
+          ],
           Expanded(
             flex: 2,
             child: ElevatedButton.icon(
               onPressed: _isLoading ? null : _nextStep,
               icon: _isLoading
-                  ? const SizedBox(
-                      width: 16, height: 16,
+                  ? const SizedBox(width: 16, height: 16,
                       child: CircularProgressIndicator(
                           strokeWidth: 2, color: Colors.white))
-                  : Icon(isLast ? Icons.analytics : Icons.arrow_forward_ios,
-                      size: 16),
+                  : Icon(isLast
+                      ? Icons.analytics_rounded
+                      : Icons.arrow_forward_ios_rounded,
+                      size: 15),
               label: Text(
-                _isLoading
-                    ? 'Memproses...'
-                    : isLast
-                        ? 'Prediksi Sekarang'
-                        : 'Lanjut',
-                style: const TextStyle(fontSize: 15),
+                _isLoading ? 'Memproses...' : isLast ? 'Prediksi Sekarang' : 'Lanjut',
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal,
+                backgroundColor: _teal700,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
+                disabledBackgroundColor: _neutral200,
+                padding: const EdgeInsets.symmetric(vertical: 13),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
+                    borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
               ),
             ),
           ),
@@ -376,527 +463,440 @@ class _ObesityPredictPageState extends State<ObesityPredictPage> {
   }
 
   // ════════════════════════════════════════════════════════
-  //  STEP 0 — DATA FISIK
-  // ════════════════════════════════════════════════════════
-  Widget _buildStep0DataFisik() {
-    return _stepWrapper(
-      formKey: _formKeys[0],
-      icon: Icons.person_outline,
-      title: 'Data Fisik',
-      subtitle: 'Masukkan informasi dasar tubuh Anda',
-      children: [
-        _infoBox(
-          icon: Icons.info_outline,
-          text: 'Data ini digunakan untuk menghitung BMI (Body Mass Index) '
-              'sebagai dasar prediksi obesitas.',
-        ),
-        _buildTF(
-          label: 'Usia',
-          hint: 'Contoh: 22',
-          suffix: 'tahun',
-          ctrl: _usiaCtrl,
-          help: 'Masukkan umur Anda saat ini dalam tahun.',
-        ),
-        _buildDropdownItem(
-          label: 'Jenis Kelamin',
-          value: _jenisKelamin,
-          items: ['Laki-laki', 'Perempuan'],
-          onChanged: (v) => setState(() => _jenisKelamin = v!),
-          help: 'Faktor biologis yang mempengaruhi distribusi lemak tubuh.',
-        ),
-        _buildTF(
-          label: 'Tinggi Badan',
-          hint: 'Contoh: 1.70',
-          suffix: 'meter',
-          ctrl: _tinggiCtrl,
-          help: 'Masukkan tinggi badan dalam satuan meter (bukan cm).\n'
-              'Contoh: 170 cm → 1.70',
-        ),
-        _buildTF(
-          label: 'Berat Badan',
-          hint: 'Contoh: 65.0',
-          suffix: 'kg',
-          ctrl: _beratCtrl,
-          help: 'Masukkan berat badan Anda dalam kilogram.',
-        ),
-      ],
-    );
-  }
-
-  // ════════════════════════════════════════════════════════
-  //  STEP 1 — POLA MAKAN
-  // ════════════════════════════════════════════════════════
-  Widget _buildStep1PolaMakan() {
-    return _stepWrapper(
-      formKey: _formKeys[1],
-      icon: Icons.restaurant_menu,
-      title: 'Pola Makan',
-      subtitle: 'Ceritakan kebiasaan makan Anda sehari-hari',
-      children: [
-        _buildDropdownItem(
-          label: 'Konsumsi Makanan Tinggi Kalori',
-          value: _kaloriTinggi,
-          items: ['Tidak', 'Ya'],
-          onChanged: (v) => setState(() => _kaloriTinggi = v!),
-          help: 'Apakah Anda sering mengonsumsi makanan '
-              'berlemak tinggi, fast food, atau gorengan?',
-        ),
-        _buildTF(
-          label: 'Konsumsi Sayur & Buah',
-          hint: 'Contoh: 2.0',
-          suffix: 'porsi/hari',
-          ctrl: _sayurCtrl,
-          help: 'Rata-rata porsi sayur dan buah yang Anda makan per hari.\n'
-              '1 porsi ≈ 1 mangkuk sayur atau 1 buah sedang.',
-        ),
-        _buildTF(
-          label: 'Jumlah Makan Harian',
-          hint: 'Contoh: 3',
-          suffix: 'kali/hari',
-          ctrl: _makanCtrl,
-          help: 'Berapa kali Anda makan dalam sehari '
-              '(termasuk sarapan, makan siang, makan malam).',
-          isInt: true,
-        ),
-        _buildDropdownItem(
-          label: 'Kebiasaan Ngemil (CAEC)',
-          value: _ngamil,
-          items: ['Tidak', 'Kadang', 'Sering', 'Selalu'],
-          onChanged: (v) => setState(() => _ngamil = v!),
-          help: 'Seberapa sering Anda ngemil di antara waktu makan?\n'
-              '• Kadang: 1-2x seminggu\n'
-              '• Sering: hampir tiap hari\n'
-              '• Selalu: setiap hari',
-        ),
-        _buildTF(
-          label: 'Konsumsi Air Putih',
-          hint: 'Contoh: 2.0',
-          suffix: 'liter/hari',
-          ctrl: _airCtrl,
-          help: 'Rata-rata konsumsi air putih per hari.\n'
-              'Rekomendasi WHO: minimal 2 liter (8 gelas) per hari.',
-        ),
-      ],
-    );
-  }
-
-  // ════════════════════════════════════════════════════════
-  //  STEP 2 — GAYA HIDUP
-  // ════════════════════════════════════════════════════════
-  Widget _buildStep2GayaHidup() {
-    return _stepWrapper(
-      formKey: _formKeys[2],
-      icon: Icons.local_drink,
-      title: 'Gaya Hidup',
-      subtitle: 'Informasi kebiasaan dan riwayat kesehatan',
-      children: [
-        _buildDropdownItem(
-          label: 'Konsumsi Alkohol (CALC)',
-          value: _alkohol,
-          items: ['Tidak', 'Kadang', 'Sering', 'Selalu'],
-          onChanged: (v) => setState(() => _alkohol = v!),
-          help: 'Seberapa sering Anda mengonsumsi minuman beralkohol?\n'
-              'Alkohol mengandung kalori kosong yang dapat meningkatkan '
-              'berat badan.',
-        ),
-        _buildDropdownItem(
-          label: 'Monitoring Kalori Harian',
-          value: _monitoring,
-          items: ['Tidak', 'Ya'],
-          onChanged: (v) => setState(() => _monitoring = v!),
-          help: 'Apakah Anda aktif mencatat atau memantau '
-              'jumlah kalori yang dikonsumsi setiap hari?\n'
-              '(Misalnya menggunakan aplikasi diet)',
-        ),
-        _buildDropdownItem(
-          label: 'Kebiasaan Merokok',
-          value: _merokok,
-          items: ['Tidak', 'Ya'],
-          onChanged: (v) => setState(() => _merokok = v!),
-          help: 'Apakah Anda seorang perokok aktif?\n'
-              'Merokok dapat mempengaruhi metabolisme dan distribusi '
-              'lemak tubuh.',
-        ),
-        _buildDropdownItem(
-          label: 'Riwayat Keluarga Overweight',
-          value: _riwayat,
-          items: ['Ya', 'Tidak'],
-          onChanged: (v) => setState(() => _riwayat = v!),
-          help: 'Apakah ada anggota keluarga (orang tua/saudara kandung) '
-              'yang memiliki riwayat kelebihan berat badan?\n'
-              'Faktor genetik berperan besar dalam risiko obesitas.',
-        ),
-      ],
-    );
-  }
-
-  // ════════════════════════════════════════════════════════
-  //  STEP 3 — AKTIVITAS
-  // ════════════════════════════════════════════════════════
-  Widget _buildStep3Aktivitas() {
-    return _stepWrapper(
-      formKey: _formKeys[3],
-      icon: Icons.directions_run,
-      title: 'Aktivitas Fisik',
-      subtitle: 'Seberapa aktif Anda bergerak setiap hari?',
-      children: [
-        _infoBox(
-          icon: Icons.favorite_outline,
-          text: 'WHO merekomendasikan minimal 150 menit aktivitas fisik '
-              'sedang per minggu (≈ 21 menit/hari).',
-        ),
-        _buildTF(
-          label: 'Aktivitas Fisik',
-          hint: 'Contoh: 1.0',
-          suffix: 'jam/hari',
-          ctrl: _aktivitasCtrl,
-          help: 'Rata-rata durasi olahraga atau aktivitas fisik '
-              'per hari.\n'
-              'Contoh: jalan kaki, lari, gym, bersepeda, dll.',
-        ),
-        _buildTF(
-          label: 'Waktu di Depan Layar',
-          hint: 'Contoh: 3.0',
-          suffix: 'jam/hari',
-          ctrl: _layarCtrl,
-          help: 'Rata-rata waktu yang dihabiskan di depan layar '
-              '(HP, laptop, TV) per hari.\n'
-              'Terlalu lama duduk berkaitan dengan risiko obesitas.',
-        ),
-        _buildDropdownItem(
-          label: 'Transportasi Utama',
-          value: _transport,
-          items: [
-            'Motor',
-            'Mobil',
-            'Jalan_Kaki',
-            'Sepeda',
-            'Transportasi_Umum',
-          ],
-          onChanged: (v) => setState(() => _transport = v!),
-          help: 'Moda transportasi yang paling sering Anda gunakan '
-              'sehari-hari.\n'
-              '• Jalan kaki & Sepeda → lebih aktif\n'
-              '• Motor/Mobil → cenderung lebih sedentari',
-          displayMap: {
-            'Motor': 'Motor',
-            'Mobil': 'Mobil',
-            'Jalan_Kaki': 'Jalan Kaki',
-            'Sepeda': 'Sepeda',
-            'Transportasi_Umum': 'Transportasi Umum',
-          },
-        ),
-        const SizedBox(height: 8),
-        _infoBox(
-          icon: Icons.check_circle_outline,
-          text: 'Semua data telah diisi! Tekan "Prediksi Sekarang" '
-              'untuk mendapatkan hasil analisis.',
-          color: Colors.green,
-        ),
-      ],
-    );
-  }
-
-  // ════════════════════════════════════════════════════════
-  //  HASIL PAGE
+  //  HASIL PAGE + TOMBOL SIMPAN
   // ════════════════════════════════════════════════════════
   Widget _buildHasilPage() {
-    final result     = _result!;
-    final kategori   = result['kategori'] as String;
-    final bmi        = result['bmi'];
-    final confidence = result['confidence'];
-    final color      = _getKategoriColor(kategori);
-    final rekomendasi = _getRekomendasi(kategori);
+    final kategori   = _result!['kategori'] as String;
+    final bmi        = (_result!['bmi'] as num).toDouble();
+    final confidence = (_result!['confidence'] as num).toDouble();
+    final color      = _kategoriColor(kategori);
+    final rek        = _rekomendasi(kategori);
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      physics: const BouncingScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(16, 16, 16,
+          MediaQuery.of(context).padding.bottom + 24),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── Kartu Utama ────────────────────────────────
+
+          // ── Kartu hasil ──
           Container(
-            width: double.infinity,
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [color.withOpacity(0.8), color],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16),
+              color: color,
+              borderRadius: BorderRadius.circular(20),
               boxShadow: [
-                BoxShadow(
-                    color: color.withOpacity(0.4),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6)),
+                BoxShadow(color: color.withOpacity(0.35),
+                    blurRadius: 20, offset: const Offset(0, 8)),
               ],
             ),
             child: Column(
               children: [
-                const Icon(Icons.analytics, color: Colors.white, size: 48),
-                const SizedBox(height: 12),
+                const Icon(Icons.analytics_rounded,
+                    color: Colors.white, size: 48),
+                const SizedBox(height: 10),
                 const Text('Hasil Prediksi',
-                    style: TextStyle(color: Colors.white70, fontSize: 14)),
-                const SizedBox(height: 4),
-                Text(
-                  kategori.replaceAll('_', ' '),
-                  style: const TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _whiteMetric('BMI',
-                        '${bmi.toStringAsFixed(2)}', 'kg/m²'),
-                    Container(width: 1, height: 40, color: Colors.white38),
-                    _whiteMetric('Confidence',
-                        '${confidence.toStringAsFixed(1)}', '%'),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // ── Rekomendasi ────────────────────────────────
-          _buildRekomendasiCard(rekomendasi),
-
-          const SizedBox(height: 16),
-
-          // ── Ringkasan Input ────────────────────────────
-          _buildRingkasanInput(),
-
-          const SizedBox(height: 16),
-
-          // ── Tombol Ulangi ──────────────────────────────
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _resetWizard,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Prediksi Ulang',
-                  style: TextStyle(fontSize: 15)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 40),
-        ],
-      ),
-    );
-  }
-
-  Widget _whiteMetric(String label, String value, String unit) {
-    return Column(
-      children: [
-        Text(label,
-            style: const TextStyle(color: Colors.white70, fontSize: 12)),
-        const SizedBox(height: 4),
-        RichText(
-          text: TextSpan(
-            children: [
-              TextSpan(
-                  text: value,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold)),
-              TextSpan(
-                  text: ' $unit',
-                  style: const TextStyle(
-                      color: Colors.white70, fontSize: 12)),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRekomendasiCard(String rekomendasi) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.blue.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blue.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.lightbulb, color: Colors.blue),
-              SizedBox(width: 8),
-              Text('Rekomendasi',
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue,
-                      fontSize: 15)),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(rekomendasi, style: const TextStyle(fontSize: 14, height: 1.5)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRingkasanInput() {
-    final items = [
-      ('Usia',          '${_usiaCtrl.text} tahun'),
-      ('Tinggi',        '${_tinggiCtrl.text} m'),
-      ('Berat',         '${_beratCtrl.text} kg'),
-      ('Jenis Kelamin', _jenisKelamin),
-      ('Sayur & Buah',  '${_sayurCtrl.text} porsi/hari'),
-      ('Makan Harian',  '${_makanCtrl.text}x/hari'),
-      ('Konsumsi Air',  '${_airCtrl.text} L/hari'),
-      ('Aktivitas',     '${_aktivitasCtrl.text} jam/hari'),
-      ('Waktu Layar',   '${_layarCtrl.text} jam/hari'),
-      ('Transportasi',  _transport.replaceAll('_', ' ')),
-    ];
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-            child: Row(
-              children: [
-                Icon(Icons.list_alt, color: Colors.grey.shade600, size: 18),
-                const SizedBox(width: 8),
-                Text('Ringkasan Data',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey.shade700)),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          ...items.map((e) => _ringkasanRow(e.$1, e.$2)),
-        ],
-      ),
-    );
-  }
-
-  Widget _ringkasanRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label,
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
-          Text(value,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w600, fontSize: 13)),
-        ],
-      ),
-    );
-  }
-
-  // ════════════════════════════════════════════════════════
-  //  REUSABLE WIDGETS
-  // ════════════════════════════════════════════════════════
-
-  /// Wrapper scrollable untuk tiap step
-  Widget _stepWrapper({
-    required GlobalKey<FormState> formKey,
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required List<Widget> children,
-  }) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Form(
-        key: formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header step
-            Row(
-              children: [
+                    style: TextStyle(color: Colors.white70, fontSize: 13)),
+                const SizedBox(height: 6),
+                Text(kategori.replaceAll('_', ' '),
+                  style: const TextStyle(fontSize: 24,
+                      fontWeight: FontWeight.w900, color: Colors.white),
+                  textAlign: TextAlign.center),
+                const SizedBox(height: 18),
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.symmetric(
+                      vertical: 12, horizontal: 8),
                   decoration: BoxDecoration(
-                    color: Colors.teal.shade50,
-                    borderRadius: BorderRadius.circular(10),
+                    color: Colors.white.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(icon, color: Colors.teal, size: 28),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      Text(title,
-                          style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.teal)),
-                      Text(subtitle,
-                          style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey.shade600)),
+                      _metricChip('BMI', bmi.toStringAsFixed(1), 'kg/m²'),
+                      Container(width: 1, height: 36, color: Colors.white30),
+                      _metricChip('Akurasi',
+                          '${confidence.toStringAsFixed(1)}%', ''),
                     ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+          ),
+
+          const SizedBox(height: 14),
+
+          // ── TOMBOL SIMPAN + ULANG ──
+          Row(
+            children: [
+              // Tombol Simpan
+              Expanded(
+                flex: 3,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  child: _isSaved
+                      ? Container(
+                          key: const ValueKey('saved'),
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE8F5E9),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFA5D6A7)),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.check_circle_rounded,
+                                  color: Color(0xFF43A047), size: 18),
+                              SizedBox(width: 6),
+                              Text('Tersimpan',
+                                style: TextStyle(color: Color(0xFF2E7D32),
+                                    fontWeight: FontWeight.w700)),
+                            ],
+                          ),
+                        )
+                      : ElevatedButton.icon(
+                          key: const ValueKey('save_btn'),
+                          onPressed: _isSaving ? null : _simpan,
+                          icon: _isSaving
+                              ? const SizedBox(width: 16, height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white))
+                              : const Icon(Icons.save_rounded, size: 18),
+                          label: Text(
+                            _isSaving ? 'Menyimpan...' : 'Simpan Hasil',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w700, fontSize: 14),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF1565C0),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            elevation: 0,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              // Tombol Ulang
+              Expanded(
+                flex: 2,
+                child: OutlinedButton.icon(
+                  onPressed: _resetWizard,
+                  icon: const Icon(Icons.refresh_rounded, size: 17),
+                  label: const Text('Ulang',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _teal700,
+                    side: const BorderSide(color: _teal700, width: 1.5),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          if (!_isSaved) ...[
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.cloud_upload_outlined,
+                    size: 12, color: _neutral400),
+                const SizedBox(width: 4),
+                Text('Simpan ke riwayat akun Anda',
+                  style: TextStyle(fontSize: 11, color: _neutral400)),
+              ],
+            ),
+          ],
+
+          const SizedBox(height: 16),
+
+          // ── Rekomendasi ──
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _neutral100),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(Icons.lightbulb_outline_rounded,
+                        color: Colors.amber.shade700, size: 20),
+                  ),
+                  const SizedBox(width: 10),
+                  const Text('Rekomendasi',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                ]),
+                const SizedBox(height: 12),
+                Text(rek, style: TextStyle(fontSize: 14,
+                    height: 1.6, color: _neutral600)),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 14),
+
+          // ── Ringkasan data input ──
+          _buildRingkasan(),
+        ],
+      ),
+    );
+  }
+
+  Widget _metricChip(String label, String value, String unit) => Column(
+    children: [
+      Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+      const SizedBox(height: 4),
+      Text(unit.isEmpty ? value : '$value $unit',
+        style: const TextStyle(color: Colors.white,
+            fontSize: 20, fontWeight: FontWeight.w900)),
+    ],
+  );
+
+  Widget _buildRingkasan() {
+    final items = [
+      (Icons.cake_outlined,           'Usia',          '${_usiaCtrl.text} tahun'),
+      (Icons.height_rounded,          'Tinggi',        '${_tinggiCtrl.text} m'),
+      (Icons.monitor_weight_outlined, 'Berat',         '${_beratCtrl.text} kg'),
+      (Icons.person_outline_rounded,  'Jenis Kelamin', _jenisKelamin),
+      (Icons.eco_outlined,            'Sayur & Buah',  '${_sayurCtrl.text} porsi/hari'),
+      (Icons.restaurant_outlined,     'Makan Harian',  '${_makanCtrl.text}x/hari'),
+      (Icons.water_drop_outlined,     'Air Putih',     '${_airCtrl.text} L/hari'),
+      (Icons.directions_run_rounded,  'Aktivitas',     '${_aktivitasCtrl.text} jam/hari'),
+      (Icons.tv_outlined,             'Waktu Layar',   '${_layarCtrl.text} jam/hari'),
+      (Icons.commute_outlined,        'Transportasi',  _transport.replaceAll('_', ' ')),
+    ];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _neutral100),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+            child: Row(children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                    color: _teal50, borderRadius: BorderRadius.circular(10)),
+                child: Icon(Icons.list_alt_rounded, color: _teal700, size: 18),
+              ),
+              const SizedBox(width: 10),
+              const Text('Ringkasan Data',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+            ]),
+          ),
+          Divider(height: 1, color: _neutral100),
+          ...items.asMap().entries.map((e) {
+            final isLast = e.key == items.length - 1;
+            final item   = e.value;
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 11),
+                  child: Row(children: [
+                    Icon(item.$1, size: 15, color: _neutral400),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(item.$2,
+                        style: TextStyle(color: _neutral600, fontSize: 13))),
+                    Text(item.$3,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 13)),
+                  ]),
+                ),
+                if (!isLast)
+                  Divider(height: 1, indent: 41, color: _neutral50),
+              ],
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  // ════════════════════════════════════════════════════════
+  //  STEP PAGES
+  // ════════════════════════════════════════════════════════
+  Widget _buildStep0DataFisik() => _wrap(_formKeys[0],
+    Icons.person_outline_rounded, 'Data Fisik',
+    'Masukkan informasi dasar tubuh Anda',
+    [
+      _info('Data ini digunakan untuk menghitung BMI sebagai dasar prediksi obesitas.'),
+      _tf('Usia', 'Contoh: 22', 'tahun', _usiaCtrl, 'Umur Anda saat ini dalam tahun.'),
+      _dd('Jenis Kelamin', _jenisKelamin, ['Laki-laki', 'Perempuan'],
+          (v) => setState(() => _jenisKelamin = v!),
+          'Faktor biologis yang mempengaruhi distribusi lemak tubuh.'),
+      _tf('Tinggi Badan', 'Contoh: 1.70', 'meter', _tinggiCtrl,
+          'Dalam satuan meter. Contoh: 170 cm → 1.70'),
+      _tf('Berat Badan', 'Contoh: 65.0', 'kg', _beratCtrl,
+          'Masukkan berat badan dalam kilogram.'),
+    ],
+  );
+
+  Widget _buildStep1PolaMakan() => _wrap(_formKeys[1],
+    Icons.restaurant_menu_rounded, 'Pola Makan',
+    'Ceritakan kebiasaan makan sehari-hari',
+    [
+      _dd('Konsumsi Makanan Tinggi Kalori', _kaloriTinggi, ['Tidak', 'Ya'],
+          (v) => setState(() => _kaloriTinggi = v!),
+          'Apakah sering mengonsumsi fast food, gorengan, atau makanan berlemak?'),
+      _tf('Konsumsi Sayur & Buah', 'Contoh: 2.0', 'porsi/hari', _sayurCtrl,
+          '1 porsi ≈ 1 mangkuk sayur atau 1 buah sedang.'),
+      _tf('Jumlah Makan Harian', 'Contoh: 3', 'kali/hari', _makanCtrl,
+          'Termasuk sarapan, makan siang, dan makan malam.', isInt: true),
+      _dd('Kebiasaan Ngemil', _ngamil, ['Tidak','Kadang','Sering','Selalu'],
+          (v) => setState(() => _ngamil = v!),
+          'Kadang: 1-2x/minggu  •  Sering: hampir tiap hari  •  Selalu: setiap hari'),
+      _tf('Konsumsi Air Putih', 'Contoh: 2.0', 'L/hari', _airCtrl,
+          'Rekomendasi WHO: minimal 2 liter (8 gelas) per hari.'),
+    ],
+  );
+
+  Widget _buildStep2GayaHidup() => _wrap(_formKeys[2],
+    Icons.spa_outlined, 'Gaya Hidup',
+    'Kebiasaan dan riwayat kesehatan Anda',
+    [
+      _dd('Konsumsi Alkohol', _alkohol, ['Tidak','Kadang','Sering','Selalu'],
+          (v) => setState(() => _alkohol = v!),
+          'Alkohol mengandung kalori kosong yang dapat meningkatkan berat badan.'),
+      _dd('Monitoring Kalori Harian', _monitoring, ['Tidak','Ya'],
+          (v) => setState(() => _monitoring = v!),
+          'Apakah aktif mencatat kalori? (misal: menggunakan aplikasi diet)'),
+      _dd('Kebiasaan Merokok', _merokok, ['Tidak','Ya'],
+          (v) => setState(() => _merokok = v!),
+          'Merokok dapat mempengaruhi metabolisme dan distribusi lemak tubuh.'),
+      _dd('Riwayat Keluarga Overweight', _riwayat, ['Ya','Tidak'],
+          (v) => setState(() => _riwayat = v!),
+          'Faktor genetik berperan besar dalam risiko obesitas.'),
+    ],
+  );
+
+  Widget _buildStep3Aktivitas() => _wrap(_formKeys[3],
+    Icons.directions_run_rounded, 'Aktivitas Fisik',
+    'Seberapa aktif Anda bergerak setiap hari?',
+    [
+      _info('WHO: minimal 150 menit aktivitas fisik sedang per minggu (≈ 21 menit/hari).'),
+      _tf('Aktivitas Fisik', 'Contoh: 1.0', 'jam/hari', _aktivitasCtrl,
+          'Rata-rata durasi olahraga per hari (jalan kaki, lari, gym, dll).'),
+      _tf('Waktu di Depan Layar', 'Contoh: 3.0', 'jam/hari', _layarCtrl,
+          'Total waktu di depan HP, laptop, atau TV per hari.'),
+      _dd('Transportasi Utama', _transport,
+          ['Motor','Mobil','Jalan_Kaki','Sepeda','Transportasi_Umum'],
+          (v) => setState(() => _transport = v!),
+          'Jalan kaki & Sepeda lebih aktif  •  Motor/Mobil cenderung sedentari',
+          displayMap: {
+            'Motor':'Motor','Mobil':'Mobil','Jalan_Kaki':'Jalan Kaki',
+            'Sepeda':'Sepeda','Transportasi_Umum':'Transportasi Umum',
+          }),
+      _info('Semua data siap! Tekan "Prediksi Sekarang".',
+          color: const Color(0xFF388E3C)),
+    ],
+  );
+
+  // ════════════════════════════════════════════════════════
+  //  REUSABLE WIDGETS
+  // ════════════════════════════════════════════════════════
+  Widget _wrap(GlobalKey<FormState> key, IconData icon,
+      String title, String sub, List<Widget> children) {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+      child: Form(
+        key: key,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: _neutral100),
+              ),
+              child: Row(children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                      color: _teal50, borderRadius: BorderRadius.circular(12)),
+                  child: Icon(icon, color: _teal700, size: 26),
+                ),
+                const SizedBox(width: 14),
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: TextStyle(fontSize: 17,
+                        fontWeight: FontWeight.w800, color: _teal700)),
+                    const SizedBox(height: 2),
+                    Text(sub, style: TextStyle(
+                        fontSize: 12, color: _neutral400)),
+                  ],
+                )),
+              ]),
+            ),
+            const SizedBox(height: 16),
             ...children,
-            const SizedBox(height: 20),
           ],
         ),
       ),
     );
   }
 
-  /// TextField dengan label, hint, satuan, dan teks bantuan
-  Widget _buildTF({
-    required String label,
-    required String hint,
-    required String suffix,
-    required TextEditingController ctrl,
-    required String help,
-    bool isInt = false,
-  }) {
+  Widget _tf(String label, String hint, String suffix,
+      TextEditingController ctrl, String help, {bool isInt = false}) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TextFormField(
             controller: ctrl,
-            keyboardType:
-                isInt ? TextInputType.number : TextInputType.numberWithOptions(decimal: true),
+            keyboardType: isInt
+                ? TextInputType.number
+                : const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
               labelText: label,
               hintText: hint,
               suffixText: suffix,
-              suffixStyle: TextStyle(color: Colors.grey.shade500, fontSize: 13),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-              filled: true,
-              fillColor: Colors.white,
+              suffixStyle: TextStyle(color: _neutral400, fontSize: 12),
+              filled: true, fillColor: Colors.white,
+              contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14, vertical: 14),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: _neutral200),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: _neutral200),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: _teal500, width: 1.8),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFE53935)),
+              ),
             ),
             validator: (v) {
               if (v == null || v.isEmpty) return 'Wajib diisi';
@@ -905,43 +905,26 @@ class _ObesityPredictPageState extends State<ObesityPredictPage> {
               return null;
             },
           ),
-          // Teks bantuan
           Padding(
-            padding: const EdgeInsets.only(top: 6, left: 4),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.help_outline,
-                    size: 14, color: Colors.grey.shade500),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    help,
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade500,
-                        height: 1.4),
-                  ),
-                ),
-              ],
-            ),
+            padding: const EdgeInsets.only(top: 5, left: 2),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Icon(Icons.help_outline_rounded, size: 13, color: _neutral400),
+              const SizedBox(width: 4),
+              Expanded(child: Text(help,
+                  style: TextStyle(fontSize: 11.5,
+                      color: _neutral400, height: 1.4))),
+            ]),
           ),
         ],
       ),
     );
   }
 
-  /// Dropdown dengan teks bantuan
-  Widget _buildDropdownItem({
-    required String label,
-    required String value,
-    required List<String> items,
-    required void Function(String?) onChanged,
-    required String help,
-    Map<String, String>? displayMap,
-  }) {
+  Widget _dd(String label, String value, List<String> items,
+      void Function(String?) onChanged, String help,
+      {Map<String, String>? displayMap}) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -949,73 +932,59 @@ class _ObesityPredictPageState extends State<ObesityPredictPage> {
             value: value,
             decoration: InputDecoration(
               labelText: label,
-              border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-              filled: true,
-              fillColor: Colors.white,
+              filled: true, fillColor: Colors.white,
+              contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14, vertical: 14),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: _neutral200),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: _neutral200),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: _teal500, width: 1.8),
+              ),
             ),
-            items: items.map((e) {
-              final display = displayMap?[e] ?? e;
-              return DropdownMenuItem(value: e, child: Text(display));
-            }).toList(),
+            dropdownColor: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            items: items.map((e) => DropdownMenuItem(
+              value: e, child: Text(displayMap?[e] ?? e))).toList(),
             onChanged: onChanged,
           ),
-          // Teks bantuan
           Padding(
-            padding: const EdgeInsets.only(top: 6, left: 4),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.help_outline,
-                    size: 14, color: Colors.grey.shade500),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    help,
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade500,
-                        height: 1.4),
-                  ),
-                ),
-              ],
-            ),
+            padding: const EdgeInsets.only(top: 5, left: 2),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Icon(Icons.help_outline_rounded, size: 13, color: _neutral400),
+              const SizedBox(width: 4),
+              Expanded(child: Text(help,
+                  style: TextStyle(fontSize: 11.5,
+                      color: _neutral400, height: 1.4))),
+            ]),
           ),
         ],
       ),
     );
   }
 
-  /// Info box berwarna
-  Widget _infoBox({
-    required IconData icon,
-    required String text,
-    Color color = Colors.teal,
-  }) {
+  Widget _info(String text, {Color color = const Color(0xFF00796B)}) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.3)),
+        color: color.withOpacity(0.07),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.25)),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(
-                  fontSize: 13, color: color.withOpacity(0.9), height: 1.4),
-            ),
-          ),
-        ],
-      ),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(Icons.info_outline_rounded, color: color, size: 17),
+        const SizedBox(width: 10),
+        Expanded(child: Text(text,
+            style: TextStyle(fontSize: 12.5,
+                color: color.withOpacity(0.9), height: 1.5))),
+      ]),
     );
   }
 }

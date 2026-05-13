@@ -18,7 +18,7 @@ class AuthService {
   // BASE URL — ganti sesuai environment kamu
   // ────────────────────────────────────────────
   
-  static const String _baseUrl = 'http://localhost:8000/api';
+  static const String _baseUrl = 'http://127.0.0.1:8000/api';
   // static const String _baseUrl = 'http://192.168.180.40:8000/api';
   // static const String _baseUrl = 'http://10.10.180.40:8000/api'; // untuk broser
   // Emulator Android  → http://10.0.2.2:8000/api
