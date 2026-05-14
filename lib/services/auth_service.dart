@@ -247,4 +247,71 @@ class AuthService {
     'Accept'       : 'application/json',
     'Authorization': 'Bearer $token',
   };
+  // ══════════════════════════════════════════════
+// UPDATE PROFILE
+// POST /api/update-profile
+// ══════════════════════════════════════════════
+static Future<Map<String, dynamic>> updateProfile({
+  required String name,
+  required String email,
+  String password = '',
+}) async {
+
+  final token = await getToken();
+
+  if (token == null) {
+    return {
+      'success': false,
+      'message': 'Token tidak ditemukan',
+    };
+  }
+
+  try {
+
+    final response = await http.post(
+      Uri.parse('$_baseUrl/update-profile'),
+      headers: _authHeaders(token),
+      body: json.encode({
+        'name': name,
+        'email': email,
+        'password': password,
+      }),
+    );
+
+    final data =
+        json.decode(response.body);
+
+    if (response.statusCode == 200) {
+
+      // update cache user
+      if (data['user'] != null) {
+        await _cacheUser(
+          Map<String, dynamic>.from(data['user']),
+        );
+      }
+
+      return {
+        'success': true,
+        'message': data['message'],
+        'user': data['user'],
+      };
+
+    } else {
+
+      return {
+        'success': false,
+        'message': data['message'] ??
+            'Gagal update profile',
+      };
+    }
+
+  } catch (e) {
+
+    return {
+      'success': false,
+      'message':
+          'Tidak dapat terhubung ke server',
+    };
+  }
+}
 }
