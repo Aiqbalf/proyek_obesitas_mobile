@@ -692,32 +692,35 @@ class _ProfilePageState extends State<ProfilePage>
   // Dialog Detail Prediksi
   // ══════════════════════════════════════════════
   void _showPredictionDetail(Map<String, dynamic> item) {
-    final result     = item['result']     as String? ?? '-';
-    final confidence = item['confidence'] as num?;
-    final isPositive = _isPositiveResult(result);
-    final color      = isPositive ? Colors.red.shade600 : _green700;
-    final bgColor    = isPositive
-        ? Colors.red.shade50
-        : _green50;
+  final hasil      = (item['hasil'] as Map?)?.cast<String, dynamic>() ?? {};
+  final input      = (item['input'] as Map?)?.cast<String, dynamic>() ?? {};
+  final result     = hasil['kategori']   as String? ?? '-';
+  final bmi        = hasil['bmi'];
+  final confidence = hasil['confidence'] as num?;
+  final type       = item['jenis_prediksi'] as String? ?? 'Prediksi Obesitas';
+  final createdAt  = item['prediksi_at'] as String?;
+  final isPositive = _isPositiveResult(result);
+  final color      = isPositive ? Colors.red.shade600 : _green700;
+  final bgColor    = isPositive ? Colors.red.shade50  : _green50;
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        padding: EdgeInsets.fromLTRB(
-            24, 16, 24, MediaQuery.of(context).viewInsets.bottom + 32),
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: EdgeInsets.fromLTRB(
+          24, 16, 24, MediaQuery.of(context).viewInsets.bottom + 32),
+      child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Handle bar
             Container(
-              width: 40,
-              height: 4,
+              width: 40, height: 4,
               decoration: BoxDecoration(
                   color: _neutral200,
                   borderRadius: BorderRadius.circular(2)),
@@ -731,8 +734,7 @@ class _ProfilePageState extends State<ProfilePage>
               decoration: BoxDecoration(
                 color: bgColor,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                    color: color.withOpacity(0.3), width: 1),
+                border: Border.all(color: color.withOpacity(0.3), width: 1),
               ),
               child: Column(
                 children: [
@@ -740,8 +742,7 @@ class _ProfilePageState extends State<ProfilePage>
                     isPositive
                         ? Icons.warning_amber_rounded
                         : Icons.check_circle_outline_rounded,
-                    color: color,
-                    size: 36,
+                    color: color, size: 36,
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -755,7 +756,17 @@ class _ProfilePageState extends State<ProfilePage>
                   if (confidence != null) ...[
                     const SizedBox(height: 4),
                     Text(
-                      'Kepercayaan: ${(confidence * 100).toStringAsFixed(1)}%',
+                      'Kepercayaan: ${confidence.toStringAsFixed(0)}%',
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: color.withOpacity(0.8),
+                          fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                  if (bmi != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      'BMI: $bmi',
                       style: TextStyle(
                           fontSize: 12,
                           color: color.withOpacity(0.8),
@@ -768,28 +779,25 @@ class _ProfilePageState extends State<ProfilePage>
             const SizedBox(height: 20),
 
             // Detail rows
-            _detailRow(
-              Icons.category_outlined,
-              'Jenis Prediksi',
-              item['type'] as String? ?? '-',
-            ),
-            _detailRow(
-              Icons.calendar_today_outlined,
-              'Tanggal',
-              _formatDate(item['created_at'] as String?),
-            ),
-            if (item['input_data'] != null)
-              _detailRow(
-                Icons.data_usage_outlined,
-                'Data Input',
-                item['input_data'].toString(),
-              ),
-            if (item['note'] != null && (item['note'] as String).isNotEmpty)
-              _detailRow(
-                Icons.notes_outlined,
-                'Catatan',
-                item['note'] as String,
-              ),
+            _detailRow(Icons.category_outlined,   'Jenis Prediksi', type),
+            _detailRow(Icons.calendar_today_outlined, 'Tanggal', _formatDate(createdAt)),
+
+            // Data input dari MongoDB
+            if (input['usia'] != null)
+              _detailRow(Icons.cake_outlined, 'Usia', '${input['usia']} tahun'),
+            if (input['tinggi'] != null && input['berat'] != null)
+              _detailRow(Icons.monitor_weight_outlined, 'Tinggi / Berat',
+                  '${input['tinggi']} cm / ${input['berat']} kg'),
+            if (input['jenis_kelamin'] != null)
+              _detailRow(Icons.person_outline_rounded, 'Jenis Kelamin',
+                  input['jenis_kelamin'].toString()),
+            if (input['aktivitas_fisik'] != null)
+              _detailRow(Icons.directions_run_rounded, 'Aktivitas Fisik',
+                  '${input['aktivitas_fisik']}x/minggu'),
+            if (input['transportasi'] != null)
+              _detailRow(Icons.directions_rounded, 'Transportasi',
+                  input['transportasi'].toString()),
+
             const SizedBox(height: 8),
 
             // Close button
@@ -804,15 +812,15 @@ class _ProfilePageState extends State<ProfilePage>
                       borderRadius: BorderRadius.circular(14)),
                 ),
                 child: const Text('Tutup',
-                    style:
-                        TextStyle(color: _neutral600, fontSize: 14)),
+                    style: TextStyle(color: _neutral600, fontSize: 14)),
               ),
             ),
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _detailRow(IconData icon, String label, String value) =>
       Padding(
@@ -1225,121 +1233,95 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   Widget _predictionHistoryItem(Map<String, dynamic> item) {
-    final result     = item['result']     as String? ?? '-';
-    final type       = item['type']       as String? ?? 'Prediksi';
-    final createdAt  = item['created_at'] as String?;
-    final confidence = item['confidence'] as num?;
-    final isPositive = _isPositiveResult(result);
+  final hasil = (item['hasil'] as Map?)?.cast<String, dynamic>() ?? {};
 
-    final resultColor  = isPositive ? Colors.red.shade600 : _green700;
-    final resultBg     = isPositive ? Colors.red.shade50  : _green50;
-    final resultIcon   = isPositive
-        ? Icons.warning_amber_rounded
-        : Icons.check_circle_outline_rounded;
+  final result = hasil['kategori']?.toString() ?? '-';
+  final bmi = hasil['bmi'];
+  final confidence = hasil['confidence'];
+  final type = item['jenis_prediksi']?.toString() ?? 'Prediksi Obesitas';
+  final createdAt = item['prediksi_at']?.toString();
 
-    return InkWell(
-      onTap: () => _showPredictionDetail(item),
-      borderRadius: BorderRadius.circular(20),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Row(
-          children: [
-            // Icon hasil
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: resultBg,
-                borderRadius: BorderRadius.circular(13),
-              ),
-              child: Icon(resultIcon, color: resultColor, size: 20),
+  final isPositive = _isPositiveResult(result);
+
+  final resultColor = isPositive ? Colors.red.shade600 : _green700;
+  final resultBg = isPositive ? Colors.red.shade50 : _green50;
+  final resultIcon = isPositive
+      ? Icons.warning_amber_rounded
+      : Icons.check_circle_outline_rounded;
+
+  return InkWell(
+    onTap: () => _showPredictionDetail(item),
+    borderRadius: BorderRadius.circular(20),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: resultBg,
+              borderRadius: BorderRadius.circular(13),
             ),
-            const SizedBox(width: 14),
+            child: Icon(resultIcon, color: resultColor, size: 20),
+          ),
+          const SizedBox(width: 14),
 
-            // Info teks
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          type,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: _neutral900,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      // Badge hasil
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: resultBg,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                              color: resultColor.withOpacity(0.25),
-                              width: 0.8),
-                        ),
-                        child: Text(
-                          result,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: resultColor,
-                          ),
-                        ),
-                      ),
-                    ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  type,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: _neutral900,
                   ),
-                  const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      Text(
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '$result${bmi != null ? " • BMI: $bmi" : ""}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: resultColor,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
                         _formatDate(createdAt),
                         style: const TextStyle(
                           fontSize: 11,
                           color: _neutral400,
-                          fontWeight: FontWeight.w400,
                         ),
                       ),
-                      if (confidence != null) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          width: 3,
-                          height: 3,
-                          decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: _neutral400),
+                    ),
+                    if (confidence != null)
+                      Text(
+                        '${confidence.toString()}% yakin',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: _neutral400,
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${(confidence * 100).toStringAsFixed(0)}% yakin',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: _neutral400,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
+                      ),
+                  ],
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            const Icon(Icons.chevron_right_rounded,
-                color: _neutral400, size: 18),
-          ],
-        ),
+          ),
+
+          const SizedBox(width: 8),
+          const Icon(Icons.chevron_right_rounded,
+              color: _neutral400, size: 18),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   /// Tampilkan semua riwayat dalam bottom sheet
   void _showAllPredictionHistory() {
