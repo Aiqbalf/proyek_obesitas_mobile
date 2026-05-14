@@ -265,4 +265,86 @@ class ApiService {
       return [];
     }
   }
+  // ══════════════════════════════════════
+// UPDATE PROFILE
+// ══════════════════════════════════════
+static Future<Map<String, dynamic>> updateProfile(
+  String userId,
+  String name,
+  String email,
+  String password,
+) async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token') ?? '';
+
+    final body = {
+      "id": userId,
+      "name": name,
+      "email": email,
+    };
+
+    if (password.isNotEmpty) {
+      body["password"] = password;
+    }
+
+    final response = await http.post(
+      Uri.parse("$baseUrl/update-profile"),
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer $token",
+      },
+      body: jsonEncode(body),
+    );
+
+    final data = jsonDecode(response.body);
+
+    return {
+      "status": response.statusCode,
+      "data": data,
+    };
+  } catch (e) {
+    return {
+      "status": 500,
+      "data": {
+        "message": "Tidak bisa konek ke server"
+      },
+    };
+  }
+}
+static Future<Map<String, dynamic>> getPredictionHistory(
+  String userId,
+) async {
+
+  try {
+
+    final url = Uri.parse(
+      "http://127.0.0.1:8000/api/obesity/history?user_id=$userId",
+    );
+
+    print("HISTORY URL: $url");
+
+    final response = await http.get(url);
+
+    print("HISTORY STATUS: ${response.statusCode}");
+    print("HISTORY BODY: ${response.body}");
+
+    final data = jsonDecode(response.body);
+
+    return {
+      'status': response.statusCode,
+      'data': data,
+    };
+
+  } catch (e) {
+
+    return {
+      'status': 500,
+      'data': {
+        'message': e.toString(),
+      },
+    };
+  }
+}
 }
