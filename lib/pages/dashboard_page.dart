@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../services/auth_service.dart';
+import '../services/api_service.dart';
 import 'login_page.dart';
 import 'bmi_page.dart';
 import 'chat_page.dart';
@@ -48,7 +48,16 @@ class _DashboardPageState extends State<DashboardPage>
   }
 
   Future<void> _checkLogin() async {
-    final status = await AuthService.isLoggedIn();
+    bool status = await ApiService.isLoggedIn();
+    if (status) {
+      // Verifikasi token ke server
+      final user = await ApiService.getUser();
+      if (user == null) {
+        // Token tidak valid atau expired
+        await ApiService.logout();
+        status = false;
+      }
+    }
     if (mounted) setState(() => _isLogin = status);
   }
 

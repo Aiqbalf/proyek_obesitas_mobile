@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../services/auth_service.dart';
 import '../services/api_service.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -54,7 +53,7 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   Future<void> _loadUser() async {
-  final data = await AuthService.getUser();
+  final data = await ApiService.getUser();
 
   print("USER DATA PROFILE: $data");
   print("RIWAYAT USER: ${data?['riwayat_prediksi']}");
@@ -120,7 +119,7 @@ class _ProfilePageState extends State<ProfilePage>
     );
 
     if (confirm == true) {
-      await AuthService.logout();
+      await ApiService.logout();
       if (mounted) {
         Navigator.of(context).pop();
       }

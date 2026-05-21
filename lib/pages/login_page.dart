@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../services/auth_service.dart';
+import '../services/api_service.dart';
 import 'dashboard_page.dart';
 import 'register_page.dart';
 
@@ -63,14 +63,14 @@ class _LoginPageState extends State<LoginPage>
     HapticFeedback.mediumImpact();
     setState(() => _isLoading = true);
 
-    final result = await AuthService.login(
-      email: _emailCtrl.text.trim(),
-      password: _passCtrl.text.trim(),
+    final result = await ApiService.login(
+      _emailCtrl.text.trim(),
+      _passCtrl.text.trim(),
     );
 
     setState(() => _isLoading = false);
 
-    if (result['success'] == true) {
+    if (result['status'] == 200) {
       _showSnack('Selamat datang kembali! 👋', isError: false);
       if (!mounted) return;
       Navigator.pushAndRemoveUntil(
@@ -79,7 +79,7 @@ class _LoginPageState extends State<LoginPage>
         (route) => false,
       );
     } else {
-      _showSnack(result['message'] ?? 'Email atau password salah.', isError: true);
+      _showSnack(result['data']['message'] ?? 'Email atau password salah.', isError: true);
     }
   }
 

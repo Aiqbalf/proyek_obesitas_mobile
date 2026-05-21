@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import '../services/obesity_service.dart';
+import '../services/api_service.dart';
 
 class ObesityPredictPage extends StatefulWidget {
   final bool embedded;
@@ -37,7 +37,7 @@ class _ObesityPredictPageState extends State<ObesityPredictPage> {
 
   final _formKeys = List.generate(4, (_) => GlobalKey<FormState>());
 
-  // ── Controllers — kosong ──
+  // ── Controllers ──
   final _usiaCtrl      = TextEditingController();
   final _tinggiCtrl    = TextEditingController();
   final _beratCtrl     = TextEditingController();
@@ -57,8 +57,8 @@ class _ObesityPredictPageState extends State<ObesityPredictPage> {
   String _ngamil       = 'Kadang';
   String _transport    = 'Motor';
 
-  // ── Laravel base URL (sesuai Laragon virtual host) ──
-  static const String _baseUrl = 'http://127.0.0.1:8000/api';
+  // ✅ DIHAPUS: static const String _baseUrl = 'http://127.0.0.1:8000/api';
+  // Sekarang pakai ApiService.baseUrl yang sudah otomatis sesuai platform
 
   @override
   void dispose() {
@@ -162,12 +162,12 @@ class _ObesityPredictPageState extends State<ObesityPredictPage> {
   }
 
   // ════════════════════════════════════════════════════════
-  //  PREDIKSI — kirim ke Laravel → Flask
+  //  PREDIKSI
   // ════════════════════════════════════════════════════════
   Future<void> _predict() async {
     setState(() { _isLoading = true; _result = null; });
     try {
-      final result = await ObesityService.predictObesity(
+      final result = await ApiService.predictObesity(
         usia:         double.parse(_usiaCtrl.text),
         tinggi:       double.parse(_tinggiCtrl.text),
         berat:        double.parse(_beratCtrl.text),
@@ -195,26 +195,22 @@ class _ObesityPredictPageState extends State<ObesityPredictPage> {
 
   // ════════════════════════════════════════════════════════
   //  SIMPAN KE MONGODB via Laravel POST /api/obesity/save
-  //  Data disimpan ke collection users → field riwayat_prediksi[]
   // ════════════════════════════════════════════════════════
   Future<void> _simpan() async {
     setState(() => _isSaving = true);
 
     try {
-      // Ambil token dari SharedPreferences
-      // ✅ SESUDAH
-final prefs = await SharedPreferences.getInstance();
-final token = prefs.getString('token') ?? 
-              prefs.getString('auth_token') ?? '';
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ??
+                    prefs.getString('auth_token') ?? '';
 
-print('=== TOKEN: $token ===');
+      print('=== TOKEN: $token ===');
 
-if (token.isEmpty) {
-  _showSnack('Anda belum login!', isError: true);
-  return;
-}
-      // Payload yang dikirim ke Laravel
-      // Laravel akan push data ini ke users.riwayat_prediksi[]
+      if (token.isEmpty) {
+        _showSnack('Anda belum login!', isError: true);
+        return;
+      }
+
       final payload = {
         'prediksi': {
           'input': {
@@ -246,9 +242,10 @@ if (token.isEmpty) {
 
       print('=== SIMPAN PAYLOAD ===');
       print(jsonEncode(payload));
+      print('=== SIMPAN URL: ${ApiService.baseUrl}/obesity/save ==='); // ✅ debug URL
 
       final response = await http.post(
-        Uri.parse('$_baseUrl/obesity/save'),
+        Uri.parse('${ApiService.baseUrl}/obesity/save'), // ✅ pakai ApiService.baseUrl
         headers: {
           'Content-Type' : 'application/json',
           'Accept'       : 'application/json',
@@ -317,7 +314,7 @@ if (token.isEmpty) {
   }
 
   // ════════════════════════════════════════════════════════
-  //  PROGRESS HEADER — terpusat
+  //  PROGRESS HEADER
   // ════════════════════════════════════════════════════════
   Widget _buildProgressHeader() {
     final labels = ['Data Fisik', 'Pola Makan', 'Gaya Hidup', 'Aktivitas'];
@@ -333,7 +330,6 @@ if (token.isEmpty) {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: Column(
         children: [
-          // Circles + connectors — center
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(_totalSteps * 2 - 1, (i) {
@@ -376,10 +372,7 @@ if (token.isEmpty) {
               );
             }),
           ),
-
           const SizedBox(height: 10),
-
-          // Status label
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
             decoration: BoxDecoration(
@@ -463,7 +456,7 @@ if (token.isEmpty) {
   }
 
   // ════════════════════════════════════════════════════════
-  //  HASIL PAGE + TOMBOL SIMPAN
+  //  HASIL PAGE
   // ════════════════════════════════════════════════════════
   Widget _buildHasilPage() {
     final kategori   = _result!['kategori'] as String;
@@ -480,7 +473,7 @@ if (token.isEmpty) {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
 
-          // ── Kartu hasil ──
+          // Kartu hasil
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
@@ -527,10 +520,9 @@ if (token.isEmpty) {
 
           const SizedBox(height: 14),
 
-          // ── TOMBOL SIMPAN + ULANG ──
+          // Tombol Simpan + Ulang
           Row(
             children: [
-              // Tombol Simpan
               Expanded(
                 flex: 3,
                 child: AnimatedSwitcher(
@@ -581,7 +573,6 @@ if (token.isEmpty) {
                 ),
               ),
               const SizedBox(width: 10),
-              // Tombol Ulang
               Expanded(
                 flex: 2,
                 child: OutlinedButton.icon(
@@ -606,8 +597,7 @@ if (token.isEmpty) {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.cloud_upload_outlined,
-                    size: 12, color: _neutral400),
+                Icon(Icons.cloud_upload_outlined, size: 12, color: _neutral400),
                 const SizedBox(width: 4),
                 Text('Simpan ke riwayat akun Anda',
                   style: TextStyle(fontSize: 11, color: _neutral400)),
@@ -617,7 +607,7 @@ if (token.isEmpty) {
 
           const SizedBox(height: 16),
 
-          // ── Rekomendasi ──
+          // Rekomendasi
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -651,7 +641,6 @@ if (token.isEmpty) {
 
           const SizedBox(height: 14),
 
-          // ── Ringkasan data input ──
           _buildRingkasan(),
         ],
       ),
@@ -847,8 +836,7 @@ if (token.isEmpty) {
                     Text(title, style: TextStyle(fontSize: 17,
                         fontWeight: FontWeight.w800, color: _teal700)),
                     const SizedBox(height: 2),
-                    Text(sub, style: TextStyle(
-                        fontSize: 12, color: _neutral400)),
+                    Text(sub, style: TextStyle(fontSize: 12, color: _neutral400)),
                   ],
                 )),
               ]),
