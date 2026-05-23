@@ -731,14 +731,18 @@ class _ObesityPredictPageState extends State<ObesityPredictPage> {
     'Masukkan informasi dasar tubuh Anda',
     [
       _info('Data ini digunakan untuk menghitung BMI sebagai dasar prediksi obesitas.'),
-      _tf('Usia', 'Contoh: 22', 'tahun', _usiaCtrl, 'Umur Anda saat ini dalam tahun.'),
+      _tf('Usia', 'Contoh: 22', 'tahun', _usiaCtrl,
+          'Umur Anda saat ini dalam tahun. (14–61 tahun)',
+          minVal: 14, maxVal: 61),
       _dd('Jenis Kelamin', _jenisKelamin, ['Laki-laki', 'Perempuan'],
           (v) => setState(() => _jenisKelamin = v!),
           'Faktor biologis yang mempengaruhi distribusi lemak tubuh.'),
       _tf('Tinggi Badan', 'Contoh: 1.70', 'meter', _tinggiCtrl,
-          'Dalam satuan meter. Contoh: 170 cm → 1.70'),
+          'Dalam satuan meter. Contoh: 170 cm → 1.70  (1.45 – 1.98 m)',
+          minVal: 1.45, maxVal: 1.98),
       _tf('Berat Badan', 'Contoh: 65.0', 'kg', _beratCtrl,
-          'Masukkan berat badan dalam kilogram.'),
+          'Masukkan berat badan dalam kilogram. (39 – 173 kg)',
+          minVal: 39, maxVal: 173),
     ],
   );
 
@@ -749,15 +753,18 @@ class _ObesityPredictPageState extends State<ObesityPredictPage> {
       _dd('Konsumsi Makanan Tinggi Kalori', _kaloriTinggi, ['Tidak', 'Ya'],
           (v) => setState(() => _kaloriTinggi = v!),
           'Apakah sering mengonsumsi fast food, gorengan, atau makanan berlemak?'),
-      _tf('Konsumsi Sayur & Buah', 'Contoh: 2.0', 'porsi/hari', _sayurCtrl,
-          '1 porsi ≈ 1 mangkuk sayur atau 1 buah sedang.'),
+      _tf('Konsumsi Sayur & Buah', 'Contoh: 2', 'porsi/hari', _sayurCtrl,
+          '1 porsi ≈ 1 mangkuk sayur atau 1 buah sedang. (1–3 porsi)',
+          isInt: true, minVal: 1, maxVal: 3),
       _tf('Jumlah Makan Harian', 'Contoh: 3', 'kali/hari', _makanCtrl,
-          'Termasuk sarapan, makan siang, dan makan malam.', isInt: true),
-      _dd('Kebiasaan Ngemil', _ngamil, ['Tidak','Kadang','Sering','Selalu'],
+          'Termasuk sarapan, makan siang, dan makan malam. (1–4 kali)',
+          isInt: true, minVal: 1, maxVal: 4),
+      _dd('Kebiasaan Ngemil', _ngamil, ['Tidak', 'Kadang', 'Sering', 'Selalu'],
           (v) => setState(() => _ngamil = v!),
           'Kadang: 1-2x/minggu  •  Sering: hampir tiap hari  •  Selalu: setiap hari'),
-      _tf('Konsumsi Air Putih', 'Contoh: 2.0', 'L/hari', _airCtrl,
-          'Rekomendasi WHO: minimal 2 liter (8 gelas) per hari.'),
+      _tf('Konsumsi Air Putih', 'Contoh: 2', 'L/hari', _airCtrl,
+          'Rekomendasi WHO: minimal 2 liter (8 gelas) per hari. (1–3 liter)',
+          isInt: true, minVal: 1, maxVal: 3),
     ],
   );
 
@@ -765,16 +772,16 @@ class _ObesityPredictPageState extends State<ObesityPredictPage> {
     Icons.spa_outlined, 'Gaya Hidup',
     'Kebiasaan dan riwayat kesehatan Anda',
     [
-      _dd('Konsumsi Alkohol', _alkohol, ['Tidak','Kadang','Sering','Selalu'],
+      _dd('Konsumsi Alkohol', _alkohol, ['Tidak', 'Kadang', 'Sering', 'Selalu'],
           (v) => setState(() => _alkohol = v!),
           'Alkohol mengandung kalori kosong yang dapat meningkatkan berat badan.'),
-      _dd('Monitoring Kalori Harian', _monitoring, ['Tidak','Ya'],
+      _dd('Monitoring Kalori Harian', _monitoring, ['Tidak', 'Ya'],
           (v) => setState(() => _monitoring = v!),
           'Apakah aktif mencatat kalori? (misal: menggunakan aplikasi diet)'),
-      _dd('Kebiasaan Merokok', _merokok, ['Tidak','Ya'],
+      _dd('Kebiasaan Merokok', _merokok, ['Tidak', 'Ya'],
           (v) => setState(() => _merokok = v!),
           'Merokok dapat mempengaruhi metabolisme dan distribusi lemak tubuh.'),
-      _dd('Riwayat Keluarga Overweight', _riwayat, ['Ya','Tidak'],
+      _dd('Riwayat Keluarga Overweight', _riwayat, ['Ya', 'Tidak'],
           (v) => setState(() => _riwayat = v!),
           'Faktor genetik berperan besar dalam risiko obesitas.'),
     ],
@@ -786,16 +793,18 @@ class _ObesityPredictPageState extends State<ObesityPredictPage> {
     [
       _info('WHO: minimal 150 menit aktivitas fisik sedang per minggu (≈ 21 menit/hari).'),
       _tf('Aktivitas Fisik', 'Contoh: 1.0', 'jam/hari', _aktivitasCtrl,
-          'Rata-rata durasi olahraga per hari (jalan kaki, lari, gym, dll).'),
-      _tf('Waktu di Depan Layar', 'Contoh: 3.0', 'jam/hari', _layarCtrl,
-          'Total waktu di depan HP, laptop, atau TV per hari.'),
+          'Rata-rata durasi olahraga per hari (jalan kaki, lari, gym, dll). (0–3 jam)',
+          minVal: 0, maxVal: 3),
+      _tf('Waktu di Depan Layar', 'Contoh: 1.0', 'jam/hari', _layarCtrl,
+          'Total waktu di depan HP, laptop, atau TV per hari. (0–2 jam)',
+          minVal: 0, maxVal: 2),
       _dd('Transportasi Utama', _transport,
-          ['Motor','Mobil','Jalan_Kaki','Sepeda','Transportasi_Umum'],
+          ['Motor', 'Mobil', 'Jalan_Kaki', 'Sepeda', 'Transportasi_Umum'],
           (v) => setState(() => _transport = v!),
           'Jalan kaki & Sepeda lebih aktif  •  Motor/Mobil cenderung sedentari',
           displayMap: {
-            'Motor':'Motor','Mobil':'Mobil','Jalan_Kaki':'Jalan Kaki',
-            'Sepeda':'Sepeda','Transportasi_Umum':'Transportasi Umum',
+            'Motor': 'Motor', 'Mobil': 'Mobil', 'Jalan_Kaki': 'Jalan Kaki',
+            'Sepeda': 'Sepeda', 'Transportasi_Umum': 'Transportasi Umum',
           }),
       _info('Semua data siap! Tekan "Prediksi Sekarang".',
           color: const Color(0xFF388E3C)),
@@ -850,63 +859,78 @@ class _ObesityPredictPageState extends State<ObesityPredictPage> {
   }
 
   Widget _tf(String label, String hint, String suffix,
-      TextEditingController ctrl, String help, {bool isInt = false}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextFormField(
-            controller: ctrl,
-            keyboardType: isInt
-                ? TextInputType.number
-                : const TextInputType.numberWithOptions(decimal: true),
-            decoration: InputDecoration(
-              labelText: label,
-              hintText: hint,
-              suffixText: suffix,
-              suffixStyle: TextStyle(color: _neutral400, fontSize: 12),
-              filled: true, fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 14, vertical: 14),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: _neutral200),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: _neutral200),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: _teal500, width: 1.8),
-              ),
-              errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE53935)),
-              ),
+    TextEditingController ctrl, String help,
+    {bool isInt = false, double? minVal, double? maxVal}) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 14),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextFormField(
+          controller: ctrl,
+          keyboardType: isInt
+              ? TextInputType.number
+              : const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            labelText: label,
+            hintText: hint,
+            suffixText: suffix,
+            suffixStyle: TextStyle(color: _neutral400, fontSize: 12),
+            filled: true, fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14, vertical: 14),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: _neutral200),
             ),
-            validator: (v) {
-              if (v == null || v.isEmpty) return 'Wajib diisi';
-              final n = isInt ? int.tryParse(v) : double.tryParse(v);
-              if (n == null) return 'Masukkan angka yang valid';
-              return null;
-            },
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: _neutral200),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: _teal500, width: 1.8),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFFE53935)),
+            ),
           ),
-          Padding(
-            padding: const EdgeInsets.only(top: 5, left: 2),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Icon(Icons.help_outline_rounded, size: 13, color: _neutral400),
-              const SizedBox(width: 4),
-              Expanded(child: Text(help,
-                  style: TextStyle(fontSize: 11.5,
-                      color: _neutral400, height: 1.4))),
-            ]),
-          ),
-        ],
-      ),
-    );
-  }
+          validator: (v) {
+            if (v == null || v.isEmpty) return 'Wajib diisi';
+            final n = isInt
+                ? int.tryParse(v)?.toDouble()
+                : double.tryParse(v);
+            if (n == null) return 'Masukkan angka yang valid';
+            if (minVal != null && n < minVal) {
+              final minStr = minVal == minVal.truncateToDouble()
+                  ? minVal.toInt().toString()
+                  : minVal.toString();
+              return 'Nilai minimal $minStr';
+            }
+            if (maxVal != null && n > maxVal) {
+              final maxStr = maxVal == maxVal.truncateToDouble()
+                  ? maxVal.toInt().toString()
+                  : maxVal.toString();
+              return 'Nilai maksimal $maxStr';
+            }
+            return null;
+          },
+        ),
+        Padding(
+          padding: const EdgeInsets.only(top: 5, left: 2),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(Icons.help_outline_rounded, size: 13, color: _neutral400),
+            const SizedBox(width: 4),
+            Expanded(child: Text(help,
+                style: TextStyle(fontSize: 11.5,
+                    color: _neutral400, height: 1.4))),
+          ]),
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _dd(String label, String value, List<String> items,
       void Function(String?) onChanged, String help,
