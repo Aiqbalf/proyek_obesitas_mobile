@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiService {
 
   // ── Ganti dengan IP laptop kamu (cek dengan ipconfig di cmd) ──
-  static const String localIP = "10.10.187.30";
+  static const String localIP = "192.168.1.139";
 
   // ── Base URL otomatis sesuai platform ──
   static String get baseUrl {

@@ -395,7 +395,7 @@ class _HomeTabState extends State<_HomeTab>
                         color: Colors.white.withOpacity(0.75), fontSize: 13)),
                   const SizedBox(height: 20),
                   GestureDetector(
-                    onTap: () => widget.onSwitchTab(1),
+                    onTap: () => widget.onSwitchTab(3), // ← mengarah ke ObesityPredictPage
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 20, vertical: 12),

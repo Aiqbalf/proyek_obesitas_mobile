@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -17,7 +16,7 @@ class _BmiPageState extends State<BmiPage> with TickerProviderStateMixin {
   String _gender = 'Laki-laki';
   double? _bmi;
 
-  // ── Palette (selaras dengan DashboardPage) ──
+  // ── Palette ──
   static const Color _green900  = Color(0xFF064E3B);
   static const Color _green700  = Color(0xFF047857);
   static const Color _green500  = Color(0xFF10B981);
@@ -37,10 +36,13 @@ class _BmiPageState extends State<BmiPage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _resultAnim = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
-    _resultFade = CurvedAnimation(parent: _resultAnim, curve: Curves.easeOut);
-    _resultSlide = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _resultAnim, curve: Curves.easeOut));
+    _resultAnim = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 500));
+    _resultFade =
+        CurvedAnimation(parent: _resultAnim, curve: Curves.easeOut);
+    _resultSlide =
+        Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero)
+            .animate(CurvedAnimation(parent: _resultAnim, curve: Curves.easeOut));
   }
 
   @override
@@ -83,14 +85,6 @@ class _BmiPageState extends State<BmiPage> with TickerProviderStateMixin {
     return const Color(0xFFEF4444);
   }
 
-  String get _advice {
-    final b = _bmi!;
-    if (b < 18.5) return 'Tingkatkan asupan kalori dan protein untuk mencapai berat badan ideal.';
-    if (b < 25.0) return 'Pastikan asupan kalori sesuai dengan kebutuhan kalori harian & konsumsi makanan sehat.';
-    if (b < 30.0) return 'Kurangi asupan kalori dan tingkatkan aktivitas fisik secara rutin.';
-    return 'Disarankan berkonsultasi dengan dokter atau ahli gizi untuk program penurunan berat badan.';
-  }
-
   // BMI scale: pointer position 0.0–1.0
   double get _scalePosition {
     final b = _bmi!.clamp(10.0, 40.0);
@@ -99,7 +93,7 @@ class _BmiPageState extends State<BmiPage> with TickerProviderStateMixin {
 
   // ── Widgets ──
 
-  Widget _buildGenderButton(String label, String asset) {
+  Widget _buildGenderButton(String label) {
     final isSelected = _gender == label;
     return Expanded(
       child: GestureDetector(
@@ -115,20 +109,27 @@ class _BmiPageState extends State<BmiPage> with TickerProviderStateMixin {
               width: isSelected ? 2 : 1,
             ),
             boxShadow: isSelected
-                ? [BoxShadow(color: _green700.withOpacity(0.12), blurRadius: 12, offset: const Offset(0, 4))]
+                ? [
+                    BoxShadow(
+                        color: _green700.withOpacity(0.12),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4))
+                  ]
                 : [],
           ),
           child: Column(
             children: [
-              // Avatar placeholder circle
               Container(
-                width: 72, height: 72,
+                width: 72,
+                height: 72,
                 decoration: BoxDecoration(
                   color: isSelected ? _green100 : _neutral100,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  label == 'Laki-laki' ? Icons.person_rounded : Icons.person_2_rounded,
+                  label == 'Laki-laki'
+                      ? Icons.person_rounded
+                      : Icons.person_2_rounded,
                   size: 42,
                   color: isSelected ? _green700 : _neutral400,
                 ),
@@ -138,7 +139,8 @@ class _BmiPageState extends State<BmiPage> with TickerProviderStateMixin {
                 label,
                 style: TextStyle(
                   fontSize: 15,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  fontWeight:
+                      isSelected ? FontWeight.w700 : FontWeight.w500,
                   color: isSelected ? _green700 : _neutral600,
                 ),
               ),
@@ -149,20 +151,35 @@ class _BmiPageState extends State<BmiPage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildNumberInput(String label, TextEditingController ctrl, String unit) {
+  Widget _buildNumberInput(
+      String label, TextEditingController ctrl, String unit) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _neutral600)),
+            Text(label,
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _neutral600)),
             const SizedBox(width: 4),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-              decoration: BoxDecoration(color: _green100, borderRadius: BorderRadius.circular(6)),
-              child: Text(unit, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: _green700)),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                  color: _green100,
+                  borderRadius: BorderRadius.circular(6)),
+              child: Text(unit,
+                  style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: _green700)),
             ),
-            const Text(' *', style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.w700)),
+            const Text(' *',
+                style: TextStyle(
+                    color: Color(0xFFEF4444),
+                    fontWeight: FontWeight.w700)),
           ],
         ),
         const SizedBox(height: 8),
@@ -171,11 +188,15 @@ class _BmiPageState extends State<BmiPage> with TickerProviderStateMixin {
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: _neutral200),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))],
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2))
+            ],
           ),
           child: Row(
             children: [
-              // minus
               _buildCounter(Icons.remove_rounded, () {
                 final v = double.tryParse(ctrl.text) ?? 0;
                 if (v > 1) ctrl.text = (v - 1).toStringAsFixed(0);
@@ -184,18 +205,23 @@ class _BmiPageState extends State<BmiPage> with TickerProviderStateMixin {
               Expanded(
                 child: TextField(
                   controller: ctrl,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))],
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))
+                  ],
                   textAlign: TextAlign.center,
                   onChanged: (_) => setState(() {}),
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: _neutral900),
+                  style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: _neutral900),
                   decoration: const InputDecoration(
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.symmetric(vertical: 16),
                   ),
                 ),
               ),
-              // plus
               _buildCounter(Icons.add_rounded, () {
                 final v = double.tryParse(ctrl.text) ?? 0;
                 ctrl.text = (v + 1).toStringAsFixed(0);
@@ -212,80 +238,11 @@ class _BmiPageState extends State<BmiPage> with TickerProviderStateMixin {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 44, height: 56,
+        width: 44,
+        height: 56,
         decoration: const BoxDecoration(color: Colors.transparent),
         child: Icon(icon, color: _green700, size: 22),
       ),
-    );
-  }
-
-  Widget _buildBmiScale() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final w = constraints.maxWidth;
-        final pos = _scalePosition * w;
-        return Column(
-          children: [
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                // gradient bar
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    height: 14,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Color(0xFF3B82F6), // underweight
-                          Color(0xFF10B981), // normal
-                          Color(0xFFF59E0B), // overweight
-                          Color(0xFFEF4444), // obese
-                        ],
-                        stops: [0.0, 0.28, 0.5, 1.0],
-                      ),
-                    ),
-                  ),
-                ),
-                // pointer
-                Positioned(
-                  left: pos - 18,
-                  top: 18,
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: _neutral900,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 3))],
-                        ),
-                        child: Text(
-                          _bmi!.toStringAsFixed(1),
-                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800),
-                        ),
-                      ),
-                      // triangle
-                      CustomPaint(size: const Size(12, 7), painter: _TrianglePainter()),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 40),
-            // scale labels
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
-                Text('Kurang', style: TextStyle(fontSize: 10, color: Color(0xFF3B82F6), fontWeight: FontWeight.w600)),
-                Text('Ideal', style: TextStyle(fontSize: 10, color: Color(0xFF10B981), fontWeight: FontWeight.w600)),
-                Text('Lebih', style: TextStyle(fontSize: 10, color: Color(0xFFF59E0B), fontWeight: FontWeight.w600)),
-                Text('Obesitas', style: TextStyle(fontSize: 10, color: Color(0xFFEF4444), fontWeight: FontWeight.w600)),
-              ],
-            ),
-          ],
-        );
-      },
     );
   }
 
@@ -295,119 +252,163 @@ class _BmiPageState extends State<BmiPage> with TickerProviderStateMixin {
       opacity: _resultFade,
       child: SlideTransition(
         position: _resultSlide,
-        child: Column(
-          children: [
-            // Avatar header
-            Stack(
-              alignment: Alignment.center,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Container(
+            width: double.infinity,
+            padding:
+                const EdgeInsets.symmetric(vertical: 36, horizontal: 28),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(32),
+              boxShadow: [
+                BoxShadow(
+                  color: _green700.withOpacity(0.08),
+                  blurRadius: 32,
+                  offset: const Offset(0, 8),
+                ),
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 12,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
               children: [
+                // ── Label ──
                 Container(
-                  height: 80,
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [_green50, _neutral50],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _green50,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: _green100, width: 1.5),
+                  ),
+                  child: Text(
+                    'Hasil BMI · $_gender',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: _green700,
+                      letterSpacing: 0.3,
                     ),
                   ),
                 ),
-                Container(
-                  width: 96, height: 96,
-                  decoration: BoxDecoration(
-                    color: _neutral100,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 3),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, 4))],
-                  ),
-                  child: Icon(
-                    _gender == 'Laki-laki' ? Icons.person_rounded : Icons.person_2_rounded,
-                    size: 56,
-                    color: _green700,
+
+                const SizedBox(height: 32),
+
+                // ── BMI Circle ──
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Soft glow
+                    Container(
+                      width: 160,
+                      height: 160,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            _categoryColor.withOpacity(0.12),
+                            _categoryColor.withOpacity(0.0),
+                          ],
+                        ),
+                      ),
+                    ),
+                    // Outer ring
+                    Container(
+                      width: 136,
+                      height: 136,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: _categoryColor.withOpacity(0.2),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    // Inner circle
+                    Container(
+                      width: 110,
+                      height: 110,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _categoryColor.withOpacity(0.08),
+                        border: Border.all(
+                          color: _categoryColor.withOpacity(0.35),
+                          width: 2,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            _bmi!.toStringAsFixed(1),
+                            style: TextStyle(
+                              fontSize: 38,
+                              fontWeight: FontWeight.w900,
+                              color: _categoryColor,
+                              letterSpacing: -1,
+                              height: 1,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'BMI',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: _categoryColor.withOpacity(0.7),
+                              letterSpacing: 2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 28),
+
+                // ── Divider ──
+                Divider(color: _neutral200, height: 1),
+
+                const SizedBox(height: 20),
+
+                // ── Cek Ulang ──
+                GestureDetector(
+                  onTap: _reset,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: _green50,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: _green100),
+                        ),
+                        child: const Icon(Icons.refresh_rounded,
+                            color: _green700, size: 16),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Cek Ulang',
+                        style: TextStyle(
+                          color: _green700,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-
-            // Card
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(28),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 20, offset: const Offset(0, 6)),
-                ],
-              ),
-              child: Column(
-                children: [
-                  Text('BMI untuk $_gender',
-                    style: const TextStyle(fontSize: 13, color: _neutral400, fontWeight: FontWeight.w500)),
-                  const SizedBox(height: 6),
-                  Text(_category,
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: _categoryColor, letterSpacing: -0.5)),
-                  const SizedBox(height: 16),
-                  // height & weight row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildStatChip('Tinggi (cm)', _heightCtrl.text),
-                      const SizedBox(width: 24),
-                      _buildStatChip('Berat (kg)', _weightCtrl.text),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  _buildBmiScale(),
-                  const SizedBox(height: 20),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: _green50,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: _green100),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.lightbulb_rounded, color: _green700, size: 18),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(_advice,
-                            style: const TextStyle(fontSize: 13, color: _neutral600, height: 1.45)),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  GestureDetector(
-                    onTap: _reset,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: const [
-                        Icon(Icons.refresh_rounded, color: _green700, size: 17),
-                        SizedBox(width: 5),
-                        Text('Cek Ulang',
-                          style: TextStyle(color: _green700, fontWeight: FontWeight.w700, fontSize: 14)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
-    );
-  }
-
-  Widget _buildStatChip(String label, String value) {
-    return Column(
-      children: [
-        Text(label, style: const TextStyle(fontSize: 12, color: _neutral400)),
-        const SizedBox(height: 2),
-        Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: _neutral900, letterSpacing: -0.5)),
-      ],
     );
   }
 
@@ -417,20 +418,31 @@ class _BmiPageState extends State<BmiPage> with TickerProviderStateMixin {
     return Scaffold(
       backgroundColor: _neutral50,
       appBar: AppBar(
-        automaticallyImplyLeading: !widget.embedded,
+        automaticallyImplyLeading: false,
         backgroundColor: Colors.white,
         elevation: 0,
         scrolledUnderElevation: 0,
-        leading: GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Container(
-            margin: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: _neutral100, borderRadius: BorderRadius.circular(12)),
-            child: const Icon(Icons.arrow_back_ios_new_rounded, size: 16, color: _neutral900),
-          ),
+        leading: widget.embedded
+            ? null
+            : GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  margin: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                      color: _neutral100,
+                      borderRadius: BorderRadius.circular(12)),
+                  child: const Icon(Icons.arrow_back_ios_new_rounded,
+                      size: 16, color: _neutral900),
+                ),
+              ),
+        title: const Text(
+          'Cek BMI',
+          style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              color: _neutral900,
+              letterSpacing: -0.3),
         ),
-        title: const Text('Cek BMI',
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _neutral900, letterSpacing: -0.3)),
         centerTitle: true,
         systemOverlayStyle: const SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
@@ -454,20 +466,34 @@ class _BmiPageState extends State<BmiPage> with TickerProviderStateMixin {
                 child: Row(
                   children: [
                     Container(
-                      width: 44, height: 44,
-                      decoration: BoxDecoration(color: _green50, borderRadius: BorderRadius.circular(14)),
-                      child: const Icon(Icons.info_outline_rounded, color: _green700, size: 24),
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                          color: _green50,
+                          borderRadius: BorderRadius.circular(14)),
+                      child: const Icon(Icons.info_outline_rounded,
+                          color: _green700, size: 24),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Apa itu BMI?',
-                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _neutral900)),
-                          const SizedBox(height: 3),
-                          Text('Body Mass Index (BMI) adalah cara menghitung berat badan ideal berdasarkan tinggi dan berat badan.',
-                            style: const TextStyle(fontSize: 12, color: _neutral400, height: 1.4)),
+                        children: const [
+                          Text(
+                            'Apa itu BMI?',
+                            style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: _neutral900),
+                          ),
+                          SizedBox(height: 3),
+                          Text(
+                            'Body Mass Index (BMI) adalah cara menghitung berat badan ideal berdasarkan tinggi dan berat badan.',
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: _neutral400,
+                                height: 1.4),
+                          ),
                         ],
                       ),
                     ),
@@ -482,9 +508,9 @@ class _BmiPageState extends State<BmiPage> with TickerProviderStateMixin {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
-                    _buildGenderButton('Laki-laki', ''),
+                    _buildGenderButton('Laki-laki'),
                     const SizedBox(width: 12),
-                    _buildGenderButton('Perempuan', ''),
+                    _buildGenderButton('Perempuan'),
                   ],
                 ),
               ),
@@ -513,13 +539,14 @@ class _BmiPageState extends State<BmiPage> with TickerProviderStateMixin {
         ),
       ),
 
-      // ── Calculate Button (only when form shown) ──
+      // ── Calculate Button ──
       bottomNavigationBar: _bmi == null
           ? Container(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
               decoration: BoxDecoration(
                 color: Colors.white,
-                border: Border(top: BorderSide(color: _neutral200, width: 1)),
+                border:
+                    Border(top: BorderSide(color: _neutral200, width: 1)),
               ),
               child: SizedBox(
                 height: 56,
@@ -528,7 +555,8 @@ class _BmiPageState extends State<BmiPage> with TickerProviderStateMixin {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _green700,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18)),
                     elevation: 0,
                   ),
                   child: const Row(
@@ -536,7 +564,11 @@ class _BmiPageState extends State<BmiPage> with TickerProviderStateMixin {
                     children: [
                       Icon(Icons.calculate_rounded, size: 20),
                       SizedBox(width: 8),
-                      Text('HITUNG BMI', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
+                      Text('HITUNG BMI',
+                          style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5)),
                     ],
                   ),
                 ),
@@ -545,21 +577,4 @@ class _BmiPageState extends State<BmiPage> with TickerProviderStateMixin {
           : const SizedBox.shrink(),
     );
   }
-}
-
-// ── Triangle painter for scale pointer ──
-class _TrianglePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = const Color(0xFF111827);
-    final path = Path()
-      ..moveTo(0, 0)
-      ..lineTo(size.width, 0)
-      ..lineTo(size.width / 2, size.height)
-      ..close();
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(_) => false;
 }
