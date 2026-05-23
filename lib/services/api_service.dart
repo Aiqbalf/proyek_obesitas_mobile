@@ -20,6 +20,49 @@ class ApiService {
     }
   }
 
+  // ── Image Base URL otomatis sesuai platform ──
+  static String get imageBaseUrl {
+    if (kIsWeb) {
+      return "http://127.0.0.1:8000"; 
+    } else if (Platform.isAndroid || Platform.isIOS) {
+      return "http://$localIP:8000";  
+    } else {
+      return "http://$localIP:8000";
+    }
+  }
+
+  // ── Format Image URL agar bisa diakses di Mobile ──
+  static String getImageUrl(String path) {
+    if (path.isEmpty) return path;
+
+    // Ubah backslash jadi slash (berjaga-jaga jika path dari windows)
+    path = path.replaceAll('\\', '/');
+
+    // Jika path dari backend masih hardcode localhost/127.0.0.1
+    if (path.startsWith('http://localhost') || path.startsWith('http://127.0.0.1')) {
+      final uri = Uri.tryParse(path);
+      if (uri != null) {
+        path = uri.path; // Ambil path-nya saja, misal /storage/articles/gambar.jpg
+      }
+    }
+
+    if (path.startsWith('http')) {
+      return Uri.encodeFull(path);
+    }
+
+    String cleanPath = path;
+    // Bersihkan path awal agar mendapatkan path murni seperti "articles/gambar.jpg"
+    if (cleanPath.startsWith('/')) cleanPath = cleanPath.substring(1);
+    if (cleanPath.startsWith('storage/')) cleanPath = cleanPath.substring(8);
+    if (cleanPath.startsWith('public/')) cleanPath = cleanPath.substring(7);
+
+    // Gunakan route API khusus gambar yang baru dibuat untuk bypass isu symlink artisan serve di Windows
+    final finalUrl = "$baseUrl/image/$cleanPath";
+    print("🖼️ Final Image URL: $finalUrl"); // Untuk debugging di console
+    return Uri.encodeFull(finalUrl);
+  }
+
+
   // ══════════════════════════════════════
   //  LOGIN
   // ══════════════════════════════════════

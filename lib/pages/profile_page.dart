@@ -81,9 +81,10 @@ class _ProfilePageState extends State<ProfilePage>
   if (!mounted) return;
 
   setState(() {
-    _predictionHistory = List<Map<String, dynamic>>.from(
-      result['data'] ?? [],
-    );
+    final responseData = result['data'] as Map<String, dynamic>?;
+    final historyList = responseData?['data'] as List<dynamic>? ?? [];
+
+    _predictionHistory = List<Map<String, dynamic>>.from(historyList);
     _isLoadingHistory = false;
   });
 }
@@ -691,8 +692,9 @@ class _ProfilePageState extends State<ProfilePage>
   // Dialog Detail Prediksi
   // ══════════════════════════════════════════════
   void _showPredictionDetail(Map<String, dynamic> item) {
-    final result     = item['result']     as String? ?? '-';
-    final confidence = item['confidence'] as num?;
+    final hasil      = item['hasil'] as Map<String, dynamic>?;
+    final result     = hasil?['kategori'] as String? ?? '-';
+    final confidence = hasil?['confidence'] as num?;
     final isPositive = _isPositiveResult(result);
     final color      = isPositive ? Colors.red.shade600 : _green700;
     final bgColor    = isPositive
@@ -770,24 +772,18 @@ class _ProfilePageState extends State<ProfilePage>
             _detailRow(
               Icons.category_outlined,
               'Jenis Prediksi',
-              item['type'] as String? ?? '-',
+              'Prediksi Obesitas',
             ),
             _detailRow(
               Icons.calendar_today_outlined,
               'Tanggal',
-              _formatDate(item['created_at'] as String?),
+              _formatDate(item['prediksi_at'] as String?),
             ),
-            if (item['input_data'] != null)
+            if (item['input'] != null)
               _detailRow(
                 Icons.data_usage_outlined,
                 'Data Input',
-                item['input_data'].toString(),
-              ),
-            if (item['note'] != null && (item['note'] as String).isNotEmpty)
-              _detailRow(
-                Icons.notes_outlined,
-                'Catatan',
-                item['note'] as String,
+                item['input'].toString(),
               ),
             const SizedBox(height: 8),
 
@@ -1224,10 +1220,11 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   Widget _predictionHistoryItem(Map<String, dynamic> item) {
-    final result     = item['result']     as String? ?? '-';
-    final type       = item['type']       as String? ?? 'Prediksi';
-    final createdAt  = item['created_at'] as String?;
-    final confidence = item['confidence'] as num?;
+    final hasil      = item['hasil'] as Map<String, dynamic>?;
+    final result     = hasil?['kategori'] as String? ?? '-';
+    final type       = 'Prediksi Obesitas';
+    final createdAt  = item['prediksi_at'] as String?;
+    final confidence = hasil?['confidence'] as num?;
     final isPositive = _isPositiveResult(result);
 
     final resultColor  = isPositive ? Colors.red.shade600 : _green700;
