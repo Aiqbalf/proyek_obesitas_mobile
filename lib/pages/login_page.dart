@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import '../services/api_service.dart';
 import 'dashboard_page.dart';
 import 'register_page.dart';
+import 'forgot_password_page.dart';
+
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -14,11 +16,11 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage>
     with SingleTickerProviderStateMixin {
   // ── Palette ──
-  static const Color _green900  = Color(0xFF064E3B);
-  static const Color _green700  = Color(0xFF047857);
-  static const Color _green500  = Color(0xFF10B981);
-  static const Color _green100  = Color(0xFFD1FAE5);
-  static const Color _green50   = Color(0xFFF0FDF4);
+  static const Color _green900   = Color(0xFF064E3B);
+  static const Color _green700   = Color(0xFF047857);
+  static const Color _green500   = Color(0xFF10B981);
+  static const Color _green100   = Color(0xFFD1FAE5);
+  static const Color _green50    = Color(0xFFF0FDF4);
   static const Color _neutral50  = Color(0xFFF9FAFB);
   static const Color _neutral200 = Color(0xFFE5E7EB);
   static const Color _neutral300 = Color(0xFFD1D5DB);
@@ -323,11 +325,16 @@ class _LoginPageState extends State<LoginPage>
                           },
                         ),
 
-                        // Lupa password
+                        // ── Lupa Password ── FIXED: navigasi ke ForgotPasswordPage
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
-                            onPressed: () {},
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ForgotPasswordPage(),
+                              ),
+                            ),
                             style: TextButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(
                                     vertical: 8)),
@@ -390,7 +397,7 @@ class _LoginPageState extends State<LoginPage>
 
                         const SizedBox(height: 20),
 
-                        // Tombol Daftar
+                        // ── Tombol Daftar ── FIXED: navigasi ke RegisterPage
                         SizedBox(
                           width: double.infinity,
                           height: 54,
@@ -398,7 +405,8 @@ class _LoginPageState extends State<LoginPage>
                             onPressed: () => Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (_) => const RegisterPage()),
+                                builder: (_) => const RegisterPage(),
+                              ),
                             ),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: _green700,

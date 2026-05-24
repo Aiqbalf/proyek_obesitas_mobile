@@ -6,17 +6,20 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
 
-  // ── Ganti dengan IP laptop kamu (cek dengan ipconfig di cmd) ──
-  static const String localIP = "192.168.1.139";
+  // ── Ganti ke true jika menggunakan kabel USB + adb reverse (Sangat direkomendasikan!) ──
+  static const bool useUSB = true;
+
+  // ── Ganti dengan IP laptop kamu jika menggunakan koneksi Wi-Fi (useUSB = false) ──
+  static const String localIP = "10.212.167.194";
 
   // ── Base URL otomatis sesuai platform ──
   static String get baseUrl {
     if (kIsWeb) {
       return "http://127.0.0.1:8000/api"; // Web (Chrome) pakai localhost
     } else if (Platform.isAndroid || Platform.isIOS) {
-      return "http://$localIP:8000/api";  // HP fisik pakai IP laptop
+      return useUSB ? "http://127.0.0.1:8000/api" : "http://$localIP:8000/api";  // USB pakai localhost, Wi-Fi pakai IP laptop
     } else {
-      return "http://$localIP:8000/api";
+      return useUSB ? "http://127.0.0.1:8000/api" : "http://$localIP:8000/api";
     }
   }
 
@@ -25,9 +28,9 @@ class ApiService {
     if (kIsWeb) {
       return "http://127.0.0.1:8000"; 
     } else if (Platform.isAndroid || Platform.isIOS) {
-      return "http://$localIP:8000";  
+      return useUSB ? "http://127.0.0.1:8000" : "http://$localIP:8000";  
     } else {
-      return "http://$localIP:8000";
+      return useUSB ? "http://127.0.0.1:8000" : "http://$localIP:8000";
     }
   }
 
@@ -142,6 +145,67 @@ class ApiService {
       return {"status": response.statusCode, "data": data};
     } catch (e) {
       print("REGISTER ERROR: $e");
+      return {"status": 500, "data": {"message": "Tidak bisa konek ke server"}};
+    }
+  }
+
+  // ══════════════════════════════════════
+  //  FORGOT PASSWORD — STEP 1: CEK EMAIL
+  // ══════════════════════════════════════
+  static Future<Map<String, dynamic>> checkEmail(String email) async {
+    try {
+      final url = Uri.parse("$baseUrl/forgot-password/check");
+      print("CHECK EMAIL URL: $url");
+
+      final response = await http.post(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Accept":       "application/json",
+        },
+        body: jsonEncode({"email": email}),
+      );
+
+      print("CHECK EMAIL STATUS: ${response.statusCode}");
+      print("CHECK EMAIL BODY: ${response.body}");
+
+      final data = jsonDecode(response.body);
+      return {"status": response.statusCode, "data": data};
+    } catch (e) {
+      print("CHECK EMAIL ERROR: $e");
+      return {"status": 500, "data": {"message": "Tidak bisa konek ke server"}};
+    }
+  }
+
+  // ══════════════════════════════════════
+  //  FORGOT PASSWORD — STEP 2: RESET PASSWORD
+  // ══════════════════════════════════════
+  static Future<Map<String, dynamic>> resetPassword(
+      String email, String password) async {
+    try {
+      final url = Uri.parse("$baseUrl/forgot-password/reset");
+      print("RESET PASSWORD URL: $url");
+
+      final response = await http.post(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Accept":       "application/json",
+        },
+        body: jsonEncode({
+          "email":                 email,
+          "password":              password,
+          "password_confirmation": password,
+        }),
+      );
+
+      print("RESET PASSWORD STATUS: ${response.statusCode}");
+      print("RESET PASSWORD BODY: ${response.body}");
+
+      final data = jsonDecode(response.body);
+      return {"status": response.statusCode, "data": data};
+    } catch (e) {
+      print("RESET PASSWORD ERROR: $e");
       return {"status": 500, "data": {"message": "Tidak bisa konek ke server"}};
     }
   }
