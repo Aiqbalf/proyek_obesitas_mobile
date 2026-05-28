@@ -7,102 +7,58 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
 
-  // ── Ganti ke true jika menggunakan kabel USB + adb reverse (Sangat direkomendasikan!) ──
   static const bool useUSB = false;
-
-  // ── Ganti dengan IP laptop kamu jika menggunakan koneksi Wi-Fi (useUSB = false) ──
   static const String localIP = "192.168.0.122";
 
-  // ── Base URL otomatis sesuai platform ──
   static String get baseUrl {
     if (kIsWeb) {
-      return "http://127.0.0.1:8000/api"; // Web (Chrome) pakai localhost
+      return "http://127.0.0.1:8000/api";
     } else if (Platform.isAndroid || Platform.isIOS) {
-      return useUSB ? "http://127.0.0.1:8000/api" : "http://$localIP:8000/api";  // USB pakai localhost, Wi-Fi pakai IP laptop
+      return useUSB ? "http://127.0.0.1:8000/api" : "http://$localIP:8000/api";
     } else {
       return useUSB ? "http://127.0.0.1:8000/api" : "http://$localIP:8000/api";
     }
   }
 
-  // ── Image Base URL otomatis sesuai platform ──
   static String get imageBaseUrl {
     if (kIsWeb) {
-      return "http://127.0.0.1:8000"; 
+      return "http://127.0.0.1:8000";
     } else if (Platform.isAndroid || Platform.isIOS) {
-      return useUSB ? "http://127.0.0.1:8000" : "http://$localIP:8000";  
+      return useUSB ? "http://127.0.0.1:8000" : "http://$localIP:8000";
     } else {
       return useUSB ? "http://127.0.0.1:8000" : "http://$localIP:8000";
     }
   }
 
-  // ── Format Image URL agar bisa diakses di Mobile ──
   static String getImageUrl(String path) {
     if (path.isEmpty) return path;
-
-    // Ubah backslash jadi slash (berjaga-jaga jika path dari windows)
     path = path.replaceAll('\\', '/');
-
-    // Jika path dari backend masih hardcode localhost/127.0.0.1
     if (path.startsWith('http://localhost') || path.startsWith('http://127.0.0.1')) {
       final uri = Uri.tryParse(path);
-      if (uri != null) {
-        path = uri.path; // Ambil path-nya saja, misal /storage/articles/gambar.jpg
-      }
+      if (uri != null) path = uri.path;
     }
-
-    if (path.startsWith('http')) {
-      return Uri.encodeFull(path);
-    }
-
+    if (path.startsWith('http')) return Uri.encodeFull(path);
     String cleanPath = path;
-    // Bersihkan path awal agar mendapatkan path murni seperti "articles/gambar.jpg"
-    if (cleanPath.startsWith('/')) cleanPath = cleanPath.substring(1);
+    if (cleanPath.startsWith('/'))        cleanPath = cleanPath.substring(1);
     if (cleanPath.startsWith('storage/')) cleanPath = cleanPath.substring(8);
-    if (cleanPath.startsWith('public/')) cleanPath = cleanPath.substring(7);
-
-    // Gunakan route API khusus gambar yang baru dibuat untuk bypass isu symlink artisan serve di Windows
+    if (cleanPath.startsWith('public/'))  cleanPath = cleanPath.substring(7);
     final finalUrl = "$baseUrl/image/$cleanPath";
-    print("🖼️ Final Image URL: $finalUrl"); // Untuk debugging di console
+    print("🖼️ Final Image URL: $finalUrl");
     return Uri.encodeFull(finalUrl);
   }
-
 
   // ══════════════════════════════════════
   //  TEST CONNECTION
   // ══════════════════════════════════════
   static Future<void> testConnection() async {
     final url = Uri.parse("$baseUrl/test");
-    print("==================================================");
-    print("📡 MEMULAI PENGECEKAN KONEKSI API...");
-    print("URL Request: $url");
-    print("==================================================");
-
     try {
-      final response = await http.get(
-        url,
-        headers: {"Accept": "application/json"},
-      ).timeout(const Duration(seconds: 5));
-
-      print("✅ KONEKSI BERHASIL!");
-      print("Status Code: ${response.statusCode}");
-      print("Response Body: ${response.body}");
-      print("==================================================");
+      final response = await http.get(url,
+          headers: {"Accept": "application/json"})
+          .timeout(const Duration(seconds: 5));
+      print("✅ KONEKSI BERHASIL! Status: ${response.statusCode}");
     } catch (e) {
-      print("❌ KONEKSI GAGAL!");
-      print("Detailed Exception: $e");
-      
-      if (Platform.isAndroid) {
-        print("⚠️ WARNING: HP Android Anda tidak dapat terhubung ke server Laravel di $baseUrl.");
-        print("⚠️ Silakan periksa hal-hal berikut:");
-        print("   1. Pastikan laptop dan HP Android terhubung ke jaringan Wi-Fi/Hotspot yang SAMA.");
-        print("      - IP Laptop saat ini: $localIP");
-        print("   2. Server Laravel dijalankan dengan command:");
-        print("      php artisan serve --host=0.0.0.0 --port=8000");
-        print("   3. Firewall laptop tidak memblokir port 8000.");
-        print("   4. Jika menggunakan kabel USB, jalankan perintah ini di terminal laptop:");
-        print("      adb reverse tcp:8000 tcp:8000");
-      }
-      print("==================================================");
+      print("❌ KONEKSI GAGAL: $e");
     }
   }
 
@@ -113,19 +69,10 @@ class ApiService {
       String email, String password) async {
     final url = Uri.parse("$baseUrl/login");
     try {
-      print("LOGIN URL: $url");
-
-      final response = await http.post(
-        url,
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-        },
+      final response = await http.post(url,
+        headers: {"Content-Type": "application/json", "Accept": "application/json"},
         body: jsonEncode({"email": email, "password": password}),
       ).timeout(const Duration(seconds: 10));
-
-      print("LOGIN STATUS: ${response.statusCode}");
-      print("LOGIN BODY: ${response.body}");
 
       final data = jsonDecode(response.body);
 
@@ -140,11 +87,7 @@ class ApiService {
 
       return {"status": response.statusCode, "data": data};
     } catch (e) {
-      print("LOGIN ERROR/EXCEPTION: $e");
-      if (Platform.isAndroid) {
-        print("⚠️ WARNING KONEKSI: Gagal terhubung ke $url.");
-        print("⚠️ Pastikan HP Android dan Laptop berada di satu jaringan Wi-Fi yang sama, atau jalankan: adb reverse tcp:8000 tcp:8000");
-      }
+      print("LOGIN ERROR: $e");
       return {"status": 500, "data": {"message": "Tidak bisa konek ke server: $e"}};
     }
   }
@@ -155,25 +98,14 @@ class ApiService {
   static Future<Map<String, dynamic>> register(
       String name, String email, String password) async {
     try {
-      final url = Uri.parse("$baseUrl/register");
-      print("REGISTER URL: $url");
-
       final response = await http.post(
-        url,
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-        },
+        Uri.parse("$baseUrl/register"),
+        headers: {"Content-Type": "application/json", "Accept": "application/json"},
         body: jsonEncode({
-          "name":                  name,
-          "email":                 email,
-          "password":              password,
-          "password_confirmation": password,
+          "name": name, "email": email,
+          "password": password, "password_confirmation": password,
         }),
       );
-
-      print("REGISTER STATUS: ${response.statusCode}");
-      print("REGISTER BODY: ${response.body}");
 
       final data = jsonDecode(response.body);
 
@@ -194,62 +126,39 @@ class ApiService {
   }
 
   // ══════════════════════════════════════
-  //  FORGOT PASSWORD — STEP 1: CEK EMAIL
+  //  FORGOT PASSWORD — CEK EMAIL
   // ══════════════════════════════════════
   static Future<Map<String, dynamic>> checkEmail(String email) async {
     try {
-      final url = Uri.parse("$baseUrl/forgot-password/check");
-      print("CHECK EMAIL URL: $url");
-
       final response = await http.post(
-        url,
-        headers: {
-          "Content-Type": "application/json",
-          "Accept":       "application/json",
-        },
+        Uri.parse("$baseUrl/forgot-password/check"),
+        headers: {"Content-Type": "application/json", "Accept": "application/json"},
         body: jsonEncode({"email": email}),
       );
-
-      print("CHECK EMAIL STATUS: ${response.statusCode}");
-      print("CHECK EMAIL BODY: ${response.body}");
-
       final data = jsonDecode(response.body);
       return {"status": response.statusCode, "data": data};
     } catch (e) {
-      print("CHECK EMAIL ERROR: $e");
       return {"status": 500, "data": {"message": "Tidak bisa konek ke server"}};
     }
   }
 
   // ══════════════════════════════════════
-  //  FORGOT PASSWORD — STEP 2: RESET PASSWORD
+  //  FORGOT PASSWORD — RESET
   // ══════════════════════════════════════
   static Future<Map<String, dynamic>> resetPassword(
       String email, String password) async {
     try {
-      final url = Uri.parse("$baseUrl/forgot-password/reset");
-      print("RESET PASSWORD URL: $url");
-
       final response = await http.post(
-        url,
-        headers: {
-          "Content-Type": "application/json",
-          "Accept":       "application/json",
-        },
+        Uri.parse("$baseUrl/forgot-password/reset"),
+        headers: {"Content-Type": "application/json", "Accept": "application/json"},
         body: jsonEncode({
-          "email":                 email,
-          "password":              password,
+          "email": email, "password": password,
           "password_confirmation": password,
         }),
       );
-
-      print("RESET PASSWORD STATUS: ${response.statusCode}");
-      print("RESET PASSWORD BODY: ${response.body}");
-
       final data = jsonDecode(response.body);
       return {"status": response.statusCode, "data": data};
     } catch (e) {
-      print("RESET PASSWORD ERROR: $e");
       return {"status": 500, "data": {"message": "Tidak bisa konek ke server"}};
     }
   }
@@ -265,19 +174,14 @@ class ApiService {
       final response = await http.post(
         Uri.parse("$baseUrl/chat"),
         headers: {
-          "Content-Type":  "application/json",
-          "Accept":        "application/json",
+          "Content-Type": "application/json", "Accept": "application/json",
           "Authorization": "Bearer $token",
         },
         body: jsonEncode({"message": message}),
       );
 
-      print("CHAT STATUS: ${response.statusCode}");
-      print("CHAT BODY: ${response.body}");
-
       return {"status": response.statusCode, "data": jsonDecode(response.body)};
     } catch (e) {
-      print("CHAT ERROR: $e");
       return {"status": 500, "data": {"message": "Tidak bisa konek ke server"}};
     }
   }
@@ -289,15 +193,8 @@ class ApiService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? '';
-
-      await http.post(
-        Uri.parse("$baseUrl/logout"),
-        headers: {
-          "Authorization": "Bearer $token",
-          "Accept":        "application/json",
-        },
-      );
-
+      await http.post(Uri.parse("$baseUrl/logout"),
+          headers: {"Authorization": "Bearer $token", "Accept": "application/json"});
       await prefs.clear();
     } catch (e) {
       print("LOGOUT ERROR: $e");
@@ -336,26 +233,18 @@ class ApiService {
   }
 
   // ══════════════════════════════════════
-  //  AUTH GET (endpoint lain yang butuh token)
+  //  AUTH GET
   // ══════════════════════════════════════
   static Future<Map<String, dynamic>> authGet(String endpoint) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? '';
-
       final response = await http.get(
         Uri.parse("$baseUrl/$endpoint"),
-        headers: {
-          "Accept":        "application/json",
-          "Authorization": "Bearer $token",
-        },
+        headers: {"Accept": "application/json", "Authorization": "Bearer $token"},
       );
-
-      print("GET $endpoint STATUS: ${response.statusCode}");
-
       return {"status": response.statusCode, "data": jsonDecode(response.body)};
     } catch (e) {
-      print("GET ERROR: $e");
       return {"status": 500, "data": {"message": "Tidak bisa konek ke server"}};
     }
   }
@@ -368,22 +257,16 @@ class ApiService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? '';
-
       final response = await http.post(
         Uri.parse("$baseUrl/$endpoint"),
         headers: {
-          "Content-Type":  "application/json",
-          "Accept":        "application/json",
+          "Content-Type": "application/json", "Accept": "application/json",
           "Authorization": "Bearer $token",
         },
         body: jsonEncode(body),
       );
-
-      print("POST $endpoint STATUS: ${response.statusCode}");
-
       return {"status": response.statusCode, "data": jsonDecode(response.body)};
     } catch (e) {
-      print("POST ERROR: $e");
       return {"status": 500, "data": {"message": "Tidak bisa konek ke server"}};
     }
   }
@@ -397,17 +280,12 @@ class ApiService {
         Uri.parse("$baseUrl/articles"),
         headers: {"Accept": "application/json"},
       );
-
-      print("ARTICLE STATUS: ${response.statusCode}");
-      print("ARTICLE BODY: ${response.body}");
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data is List)                            return data;
         if (data is Map && data['data'] != null)     return data['data'];
         if (data is Map && data['articles'] != null) return data['articles'];
       }
-
       return [];
     } catch (e) {
       print("GET ARTICLE ERROR: $e");
@@ -419,91 +297,96 @@ class ApiService {
   //  UPDATE PROFILE
   // ══════════════════════════════════════
   static Future<Map<String, dynamic>> updateProfile(
-    String userId,
-    String name,
-    String email,
-    String password,
+    String userId, String name, String email, String password,
   ) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? '';
 
       final body = <String, dynamic>{
-        "id"   : userId,
-        "name" : name,
-        "email": email,
+        "id": userId, "name": name, "email": email,
       };
-
-      if (password.isNotEmpty) {
-        body["password"] = password;
-      }
+      if (password.isNotEmpty) body["password"] = password;
 
       final response = await http.post(
         Uri.parse("$baseUrl/update-profile"),
         headers: {
-          "Content-Type":  "application/json",
-          "Accept":        "application/json",
+          "Content-Type": "application/json", "Accept": "application/json",
           "Authorization": "Bearer $token",
         },
         body: jsonEncode(body),
       );
 
-      final data = jsonDecode(response.body);
-
-      return {
-        "status": response.statusCode,
-        "data":   data,
-      };
+      return {"status": response.statusCode, "data": jsonDecode(response.body)};
     } catch (e) {
-      return {
-        "status": 500,
-        "data":   {"message": "Tidak bisa konek ke server"},
-      };
+      return {"status": 500, "data": {"message": "Tidak bisa konek ke server"}};
+    }
+  }
+
+  // ══════════════════════════════════════
+  //  CHANGE PASSWORD  ← BARU
+  //  POST /api/change-password
+  //  Body: { id, old_password, new_password }
+  //  Laravel akan verifikasi old_password sebelum update
+  // ══════════════════════════════════════
+  static Future<Map<String, dynamic>> changePassword(
+    String userId,
+    String oldPassword,
+    String newPassword,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ?? '';
+
+      final response = await http.post(
+        Uri.parse("$baseUrl/change-password"),
+        headers: {
+          "Content-Type":  "application/json",
+          "Accept":        "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: jsonEncode({
+          "id":           userId,
+          "old_password": oldPassword,
+          "new_password": newPassword,
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      print("CHANGE PASSWORD STATUS: ${response.statusCode}");
+      print("CHANGE PASSWORD BODY: ${response.body}");
+
+      final data = jsonDecode(response.body);
+      return {"status": response.statusCode, "data": data};
+    } catch (e) {
+      print("CHANGE PASSWORD ERROR: $e");
+      return {"status": 500, "data": {"message": "Tidak bisa konek ke server"}};
     }
   }
 
   // ══════════════════════════════════════
   //  GET PREDICTION HISTORY
-  //  ✅ FIX: pakai baseUrl bukan hardcode 127.0.0.1
   // ══════════════════════════════════════
   static Future<Map<String, dynamic>> getPredictionHistory(
     String userId,
   ) async {
     try {
       final url = Uri.parse("$baseUrl/obesity/history?user_id=$userId");
-
-      print("HISTORY URL: $url");
-
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? '';
 
-      final response = await http.get(
-        url,
-        headers: {
-          "Accept":        "application/json",
-          "Authorization": "Bearer $token",
-        },
-      );
+      final response = await http.get(url,
+          headers: {"Accept": "application/json", "Authorization": "Bearer $token"});
 
       print("HISTORY STATUS: ${response.statusCode}");
-      print("HISTORY BODY: ${response.body}");
-
       final data = jsonDecode(response.body);
-
-      return {
-        'status': response.statusCode,
-        'data':   data,
-      };
+      return {'status': response.statusCode, 'data': data};
     } catch (e) {
-      return {
-        'status': 500,
-        'data':   {'message': e.toString()},
-      };
+      return {'status': 500, 'data': {'message': e.toString()}};
     }
   }
 
   // ══════════════════════════════════════
-  //  GET USER (Fetch from API)
+  //  GET USER
   // ══════════════════════════════════════
   static Future<Map<String, dynamic>?> getUser() async {
     final token = await getToken();
@@ -512,21 +395,15 @@ class ApiService {
     try {
       final response = await http.get(
         Uri.parse("$baseUrl/user"),
-        headers: {
-          "Accept":        "application/json",
-          "Authorization": "Bearer $token",
-        },
+        headers: {"Accept": "application/json", "Authorization": "Bearer $token"},
       ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final userData = jsonDecode(response.body);
-        
-        // Update cache
         final prefs = await SharedPreferences.getInstance();
-        if (userData['name'] != null) await prefs.setString('user_name', userData['name']);
+        if (userData['name']  != null) await prefs.setString('user_name',  userData['name']);
         if (userData['email'] != null) await prefs.setString('user_email', userData['email']);
-        if (userData['role'] != null) await prefs.setString('user_role', userData['role']);
-        
+        if (userData['role']  != null) await prefs.setString('user_role',  userData['role']);
         return userData;
       } else if (response.statusCode == 401) {
         await logout();
@@ -535,8 +412,8 @@ class ApiService {
     } catch (e) {
       print("GET USER ERROR: $e");
     }
-    
-    // Fallback: return cached user data if network fails or endpoint doesn't exist
+
+    // Fallback ke cache
     final prefs = await SharedPreferences.getInstance();
     final cachedName = prefs.getString('user_name');
     if (cachedName != null && cachedName.isNotEmpty) {
@@ -547,7 +424,6 @@ class ApiService {
         'role':  prefs.getString('user_role') ?? 'user',
       };
     }
-    
     return null;
   }
 
@@ -567,7 +443,7 @@ class ApiService {
     required String ngamil,
     required String transport,
     required double sayur,
-    required int makanHarian,
+    required int    makanHarian,
     required double konsumsiAir,
     required double aktivitas,
     required double waktuLayar,
@@ -591,9 +467,8 @@ class ApiService {
       'waktu_layar':      waktuLayar,
     };
 
-    print('=== PAYLOAD ===');
+    print('=== PREDICT PAYLOAD ===');
     print(jsonEncode(payload));
-    print('=== URL: $baseUrl/predict-obesity ===');
 
     final response = await http.post(
       Uri.parse('$baseUrl/predict-obesity'),
@@ -601,7 +476,7 @@ class ApiService {
       body: jsonEncode(payload),
     );
 
-    print('=== RESPONSE ${response.statusCode} ===');
+    print('=== PREDICT RESPONSE ${response.statusCode} ===');
     print(response.body);
 
     if (response.statusCode == 200) {

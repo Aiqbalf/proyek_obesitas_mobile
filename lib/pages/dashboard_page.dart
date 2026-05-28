@@ -443,40 +443,50 @@ class _HomeTabState extends State<_HomeTab>
 
   // ── Stats row ──
   Widget _stats() {
-    final items = [
-      ('10K+', 'Pengguna'),
-      ('98%',  'Akurasi'),
-      ('24/7', 'Support'),
-    ];
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: items.asMap().entries.map((e) {
-          final isLast = e.key == items.length - 1;
-          return Expanded(
-            child: Container(
-              margin: EdgeInsets.only(right: isLast ? 0 : 10),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: _neutral200),
-              ),
-              child: Column(children: [
-                Text(e.value.$1,
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900,
-                      color: _green700, letterSpacing: -0.5)),
-                const SizedBox(height: 2),
-                Text(e.value.$2,
-                  style: const TextStyle(fontSize: 11, color: _neutral400,
-                      fontWeight: FontWeight.w500)),
-              ]),
+  final items = [
+    (Icons.favorite_rounded,    'Cek Kesehatan'),
+    (Icons.analytics_rounded,   'Analisis Obesitas'),
+    (Icons.spa_rounded,         'Tips Pola Hidup'),
+  ];
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    child: Row(
+      children: items.asMap().entries.map((e) {
+        final isLast = e.key == items.length - 1;
+        return Expanded(
+          child: Container(
+            margin: EdgeInsets.only(right: isLast ? 0 : 10),
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: _neutral200),
             ),
-          );
-        }).toList(),
-      ),
-    );
-  }
+            child: Column(children: [
+              Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  color: _green50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(e.value.$1, color: _green700, size: 20),
+              ),
+              const SizedBox(height: 8),
+              Text(e.value.$2,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: _neutral900,
+                  height: 1.3,
+                )),
+            ]),
+          ),
+        );
+      }).toList(),
+    ),
+  );
+}
 
   // ── Service card ──
   Widget _card({

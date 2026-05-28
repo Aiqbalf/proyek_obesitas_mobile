@@ -238,26 +238,25 @@ class _LoginPageState extends State<LoginPage>
                   const SizedBox(height: 32),
 
                   // Stats pill row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _statPill('10K+', 'Pengguna'),
-                      Container(
-                          width: 1,
-                          height: 28,
-                          color: Colors.white.withOpacity(0.25),
-                          margin:
-                              const EdgeInsets.symmetric(horizontal: 20)),
-                      _statPill('98%', 'Akurasi'),
-                      Container(
-                          width: 1,
-                          height: 28,
-                          color: Colors.white.withOpacity(0.25),
-                          margin:
-                              const EdgeInsets.symmetric(horizontal: 20)),
-                      _statPill('24/7', 'Support'),
-                    ],
-                  ),
+                  // Stats pill row
+Row(
+  mainAxisAlignment: MainAxisAlignment.center,
+  children: [
+    _statPill(Icons.favorite_rounded, 'Cek Kesehatan'),
+    Container(
+        width: 1,
+        height: 28,
+        color: Colors.white.withOpacity(0.25),
+        margin: const EdgeInsets.symmetric(horizontal: 20)),
+    _statPill(Icons.analytics_rounded, 'Analisis Obesitas'),
+    Container(
+        width: 1,
+        height: 28,
+        color: Colors.white.withOpacity(0.25),
+        margin: const EdgeInsets.symmetric(horizontal: 20)),
+    _statPill(Icons.spa_rounded, 'Tips Pola Hidup'),
+  ],
+),
                 ],
               ),
             ),
@@ -446,22 +445,24 @@ class _LoginPageState extends State<LoginPage>
     );
   }
 
-  Widget _statPill(String value, String label) {
-    return Column(
-      children: [
-        Text(value,
-            style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-                letterSpacing: -0.3)),
-        const SizedBox(height: 2),
-        Text(label,
-            style: TextStyle(
-                fontSize: 11,
-                color: Colors.white.withOpacity(0.65),
-                fontWeight: FontWeight.w500)),
-      ],
-    );
-  }
+  Widget _statPill(IconData icon, String label) {
+  return Column(
+    children: [
+      Container(
+        width: 36, height: 36,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: Colors.white, size: 18),
+      ),
+      const SizedBox(height: 6),
+      Text(label,
+          style: TextStyle(
+              fontSize: 10,
+              color: Colors.white.withOpacity(0.85),
+              fontWeight: FontWeight.w700)),
+    ],
+  );
+}
 }
