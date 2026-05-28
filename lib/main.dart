@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'services/api_service.dart';
 import 'pages/dashboard_page.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  ApiService.testConnection();
   runApp(const MyApp());
 }
 

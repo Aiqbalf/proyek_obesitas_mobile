@@ -2,15 +2,16 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'dart:io';
+import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
 
   // ── Ganti ke true jika menggunakan kabel USB + adb reverse (Sangat direkomendasikan!) ──
-  static const bool useUSB = true;
+  static const bool useUSB = false;
 
   // ── Ganti dengan IP laptop kamu jika menggunakan koneksi Wi-Fi (useUSB = false) ──
-  static const String localIP = "10.212.167.194";
+  static const String localIP = "192.168.0.122";
 
   // ── Base URL otomatis sesuai platform ──
   static String get baseUrl {
@@ -67,12 +68,51 @@ class ApiService {
 
 
   // ══════════════════════════════════════
+  //  TEST CONNECTION
+  // ══════════════════════════════════════
+  static Future<void> testConnection() async {
+    final url = Uri.parse("$baseUrl/test");
+    print("==================================================");
+    print("📡 MEMULAI PENGECEKAN KONEKSI API...");
+    print("URL Request: $url");
+    print("==================================================");
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {"Accept": "application/json"},
+      ).timeout(const Duration(seconds: 5));
+
+      print("✅ KONEKSI BERHASIL!");
+      print("Status Code: ${response.statusCode}");
+      print("Response Body: ${response.body}");
+      print("==================================================");
+    } catch (e) {
+      print("❌ KONEKSI GAGAL!");
+      print("Detailed Exception: $e");
+      
+      if (Platform.isAndroid) {
+        print("⚠️ WARNING: HP Android Anda tidak dapat terhubung ke server Laravel di $baseUrl.");
+        print("⚠️ Silakan periksa hal-hal berikut:");
+        print("   1. Pastikan laptop dan HP Android terhubung ke jaringan Wi-Fi/Hotspot yang SAMA.");
+        print("      - IP Laptop saat ini: $localIP");
+        print("   2. Server Laravel dijalankan dengan command:");
+        print("      php artisan serve --host=0.0.0.0 --port=8000");
+        print("   3. Firewall laptop tidak memblokir port 8000.");
+        print("   4. Jika menggunakan kabel USB, jalankan perintah ini di terminal laptop:");
+        print("      adb reverse tcp:8000 tcp:8000");
+      }
+      print("==================================================");
+    }
+  }
+
+  // ══════════════════════════════════════
   //  LOGIN
   // ══════════════════════════════════════
   static Future<Map<String, dynamic>> login(
       String email, String password) async {
+    final url = Uri.parse("$baseUrl/login");
     try {
-      final url = Uri.parse("$baseUrl/login");
       print("LOGIN URL: $url");
 
       final response = await http.post(
@@ -82,7 +122,7 @@ class ApiService {
           "Accept": "application/json",
         },
         body: jsonEncode({"email": email, "password": password}),
-      );
+      ).timeout(const Duration(seconds: 10));
 
       print("LOGIN STATUS: ${response.statusCode}");
       print("LOGIN BODY: ${response.body}");
@@ -100,8 +140,12 @@ class ApiService {
 
       return {"status": response.statusCode, "data": data};
     } catch (e) {
-      print("LOGIN ERROR: $e");
-      return {"status": 500, "data": {"message": "Tidak bisa konek ke server"}};
+      print("LOGIN ERROR/EXCEPTION: $e");
+      if (Platform.isAndroid) {
+        print("⚠️ WARNING KONEKSI: Gagal terhubung ke $url.");
+        print("⚠️ Pastikan HP Android dan Laptop berada di satu jaringan Wi-Fi yang sama, atau jalankan: adb reverse tcp:8000 tcp:8000");
+      }
+      return {"status": 500, "data": {"message": "Tidak bisa konek ke server: $e"}};
     }
   }
 

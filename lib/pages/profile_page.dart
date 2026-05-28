@@ -1315,7 +1315,7 @@ class _ProfilePageState extends State<ProfilePage>
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          '${(confidence * 100).toStringAsFixed(0)}% yakin',
+                          '${(confidence).toStringAsFixed(0)}% yakin',
                           style: const TextStyle(
                             fontSize: 11,
                             color: _neutral400,
