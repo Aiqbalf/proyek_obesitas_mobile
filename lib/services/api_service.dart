@@ -7,8 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
 
-  static const bool useUSB = false;
-  static const String localIP = "192.168.0.122";
+  static const bool useUSB = true;
+  static const String localIP = "192.168.0.138";
 
   static String get baseUrl {
     if (kIsWeb) {

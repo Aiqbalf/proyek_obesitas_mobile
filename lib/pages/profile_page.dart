@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/api_service.dart';
+import '../services/notification_service.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -27,8 +28,9 @@ class _ProfilePageState extends State<ProfilePage>
 
   Map<String, dynamic>? _userData;
   List<Map<String, dynamic>> _predictionHistory = [];
-  bool _isLoading = true;
+  bool _isLoading        = true;
   bool _isLoadingHistory = false;
+  bool _notifEnabled     = false; // ✅ state notifikasi
 
   late AnimationController _animCtrl;
   late Animation<double>   _fadeAnim;
@@ -52,12 +54,17 @@ class _ProfilePageState extends State<ProfilePage>
     super.dispose();
   }
 
+  // ══════════════════════════════════════════════
+  // LOAD DATA
+  // ══════════════════════════════════════════════
   Future<void> _loadUser() async {
-    final data = await ApiService.getUser();
+    final data    = await ApiService.getUser();
+    final notifOn = await NotificationService.isEnabled(); // ✅ baca preferensi
     if (mounted) {
       setState(() {
-        _userData  = data;
-        _isLoading = false;
+        _userData     = data;
+        _notifEnabled = notifOn; // ✅ set state
+        _isLoading    = false;
       });
       _animCtrl.forward();
       _loadPredictionHistory();
@@ -76,6 +83,9 @@ class _ProfilePageState extends State<ProfilePage>
     });
   }
 
+  // ══════════════════════════════════════════════
+  // LOGOUT
+  // ══════════════════════════════════════════════
   Future<void> _logout() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -109,14 +119,24 @@ class _ProfilePageState extends State<ProfilePage>
     }
   }
 
-  void _snackDev() => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: const Text('Fitur sedang dalam pengembangan'),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: _neutral900,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      ));
+  // ══════════════════════════════════════════════
+  // TOGGLE NOTIFIKASI ✅
+  // ══════════════════════════════════════════════
+  Future<void> _toggleNotifikasi() async {
+    final newVal = !_notifEnabled;
+    await NotificationService.setEnabled(newVal);
+    setState(() => _notifEnabled = newVal);
+    _showSnack(
+      newVal
+          ? 'Notifikasi diaktifkan. Anda akan mendapat rekomendasi setelah prediksi.'
+          : 'Notifikasi dinonaktifkan.',
+      color: newVal ? _green700 : _neutral600,
+    );
+  }
 
+  // ══════════════════════════════════════════════
+  // HELPERS
+  // ══════════════════════════════════════════════
   void _showSnack(String msg, {required Color color}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -309,7 +329,7 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   // ══════════════════════════════════════════════
-  // Dialog Ubah Password — dengan password lama
+  // Dialog Ubah Password
   // ══════════════════════════════════════════════
   Future<void> _showChangePasswordDialog() async {
     final oldPassCtrl  = TextEditingController();
@@ -325,7 +345,6 @@ class _ProfilePageState extends State<ProfilePage>
       barrierColor: Colors.black54,
       builder: (_) => StatefulBuilder(
         builder: (ctx, setLocal) {
-          // Helper field password dalam dialog ini
           Widget passField({
             required TextEditingController ctrl,
             required String label,
@@ -387,7 +406,6 @@ class _ProfilePageState extends State<ProfilePage>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Icon header
                   Container(
                     width: 54, height: 54,
                     decoration: BoxDecoration(
@@ -409,8 +427,6 @@ class _ProfilePageState extends State<ProfilePage>
                   const SizedBox(height: 20),
                   const Divider(height: 1, thickness: 0.5, color: _neutral200),
                   const SizedBox(height: 20),
-
-                  // ── Field 1: Password Lama ──────────────────
                   passField(
                     ctrl: oldPassCtrl,
                     label: 'Password Lama',
@@ -418,8 +434,6 @@ class _ProfilePageState extends State<ProfilePage>
                     onToggle: () => setLocal(() => showOld = !showOld),
                   ),
                   const SizedBox(height: 14),
-
-                  // ── Divider pemisah ─────────────────────────
                   Row(children: [
                     const Expanded(child: Divider(color: _neutral200)),
                     Padding(
@@ -432,8 +446,6 @@ class _ProfilePageState extends State<ProfilePage>
                     const Expanded(child: Divider(color: _neutral200)),
                   ]),
                   const SizedBox(height: 14),
-
-                  // ── Field 2: Password Baru ──────────────────
                   passField(
                     ctrl: newPassCtrl,
                     label: 'Password Baru',
@@ -441,8 +453,6 @@ class _ProfilePageState extends State<ProfilePage>
                     onToggle: () => setLocal(() => showNew = !showNew),
                   ),
                   const SizedBox(height: 14),
-
-                  // ── Field 3: Konfirmasi Password Baru ───────
                   passField(
                     ctrl: confPassCtrl,
                     label: 'Konfirmasi Password Baru',
@@ -450,8 +460,6 @@ class _ProfilePageState extends State<ProfilePage>
                     onToggle: () => setLocal(() => showConf = !showConf),
                   ),
                   const SizedBox(height: 24),
-
-                  // ── Tombol ─────────────────────────────────
                   Row(children: [
                     Expanded(
                       child: OutlinedButton(
@@ -474,7 +482,6 @@ class _ProfilePageState extends State<ProfilePage>
                             style: TextStyle(
                                 fontSize: 14, fontWeight: FontWeight.w700)),
                         onPressed: () async {
-                          // ── Validasi ────────────────────────
                           if (oldPassCtrl.text.trim().isEmpty) {
                             _showSnack('Password lama wajib diisi',
                                 color: Colors.red.shade600);
@@ -496,15 +503,11 @@ class _ProfilePageState extends State<ProfilePage>
                                 color: Colors.red.shade600);
                             return;
                           }
-
-                          // ── Panggil API ─────────────────────
-                          // Kirim password lama untuk diverifikasi di Laravel
                           final result = await ApiService.changePassword(
                             _userData?['id'].toString() ?? '',
                             oldPassCtrl.text.trim(),
                             newPassCtrl.text.trim(),
                           );
-
                           if (!mounted) return;
                           if (result['status'] == 200) {
                             Navigator.pop(ctx);
@@ -682,6 +685,9 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 
+  // ══════════════════════════════════════════════
+  // APP BAR
+  // ══════════════════════════════════════════════
   Widget _buildAppBar() {
     final name   = _userData?['name']   as String? ?? 'Pengguna';
     final email  = _userData?['email']  as String? ?? '';
@@ -775,6 +781,9 @@ class _ProfilePageState extends State<ProfilePage>
       width: size, height: size,
       decoration: BoxDecoration(shape: BoxShape.circle, color: color));
 
+  // ══════════════════════════════════════════════
+  // INFO CARDS
+  // ══════════════════════════════════════════════
   Widget _buildInfoCards() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -823,7 +832,7 @@ class _ProfilePageState extends State<ProfilePage>
       color: _neutral100, indent: 16, endIndent: 16);
 
   // ══════════════════════════════════════════════
-  // Riwayat Prediksi
+  // RIWAYAT PREDIKSI
   // ══════════════════════════════════════════════
   Widget _buildPredictionHistorySection() {
     return Padding(
@@ -890,11 +899,11 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   Widget _predictionHistoryItem(Map<String, dynamic> item) {
-    final hasil      = item['hasil'] as Map<String, dynamic>?;
-    final result     = hasil?['kategori'] as String? ?? '-';
-    final createdAt  = item['prediksi_at'] as String?;
-    final confidence = hasil?['confidence'] as num?;
-    final isPositive = _isPositiveResult(result);
+    final hasil       = item['hasil'] as Map<String, dynamic>?;
+    final result      = hasil?['kategori'] as String? ?? '-';
+    final createdAt   = item['prediksi_at'] as String?;
+    final confidence  = hasil?['confidence'] as num?;
+    final isPositive  = _isPositiveResult(result);
     final resultColor = isPositive ? Colors.red.shade600 : _green700;
     final resultBg    = isPositive ? Colors.red.shade50  : _green50;
     final resultIcon  = isPositive
@@ -999,7 +1008,7 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   // ══════════════════════════════════════════════
-  // Menu Section — Bantuan & FAQ dan Kebijakan Privasi DIHAPUS
+  // MENU SECTION ✅ notifikasi sekarang fungsional
   // ══════════════════════════════════════════════
   Widget _buildMenuSection() {
     return Padding(
@@ -1016,23 +1025,43 @@ class _ProfilePageState extends State<ProfilePage>
                 blurRadius: 12, offset: const Offset(0, 4))],
           ),
           child: Column(children: [
-            _menuRow(Icons.edit_note_rounded, 'Edit Profil',
-                'Perbarui data pribadi Anda', _green700,
-                _showEditProfileDialog),
+            _menuRow(
+              Icons.edit_note_rounded,
+              'Edit Profil',
+              'Perbarui data pribadi Anda',
+              _green700,
+              _showEditProfileDialog,
+            ),
             _divider(),
-            _menuRow(Icons.lock_outline_rounded, 'Ubah Password',
-                'Ganti kata sandi akun', _indigo600,
-                _showChangePasswordDialog),
+            _menuRow(
+              Icons.lock_outline_rounded,
+              'Ubah Password',
+              'Ganti kata sandi akun',
+              _indigo600,
+              _showChangePasswordDialog,
+            ),
             _divider(),
-            _menuRow(Icons.notifications_none_rounded, 'Notifikasi',
-                'Atur preferensi notifikasi',
-                const Color(0xFFF59E0B), _snackDev),
+            // ✅ DIPERBAIKI: notifikasi sekarang menggunakan switch
+            _menuRowWithTrailing(
+              Icons.notifications_none_rounded,
+              'Notifikasi',
+              _notifEnabled ? 'Aktif — rekomendasi prediksi' : 'Nonaktif',
+              const Color(0xFFF59E0B),
+              _toggleNotifikasi,
+              Switch(
+                value: _notifEnabled,
+                onChanged: (_) => _toggleNotifikasi(),
+                activeColor: _green700,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
           ]),
         ),
       ]),
     );
   }
 
+  // Menu row standar (dengan chevron)
   Widget _menuRow(IconData icon, String title, String subtitle,
       Color iconColor, VoidCallback onTap) {
     return InkWell(
@@ -1058,6 +1087,35 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 
+  // ✅ Menu row dengan trailing widget (untuk switch notifikasi)
+  Widget _menuRowWithTrailing(IconData icon, String title, String subtitle,
+      Color iconColor, VoidCallback onTap, Widget trailing) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(children: [
+          Container(width: 40, height: 40,
+              decoration: BoxDecoration(color: iconColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12)),
+              child: Icon(icon, color: iconColor, size: 20)),
+          const SizedBox(width: 14),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: const TextStyle(fontSize: 14,
+                fontWeight: FontWeight.w700, color: _neutral900)),
+            Text(subtitle, style: const TextStyle(fontSize: 11,
+                color: _neutral400, fontWeight: FontWeight.w400)),
+          ])),
+          trailing,
+        ]),
+      ),
+    );
+  }
+
+  // ══════════════════════════════════════════════
+  // LOGOUT BUTTON
+  // ══════════════════════════════════════════════
   Widget _buildLogoutButton() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'services/notification_service.dart';
 import 'services/api_service.dart';
 import 'pages/dashboard_page.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService.init();
   ApiService.testConnection();
   runApp(const MyApp());
 }

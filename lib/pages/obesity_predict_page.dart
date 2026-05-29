@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -165,33 +166,41 @@ class _ObesityPredictPageState extends State<ObesityPredictPage> {
   //  PREDIKSI
   // ════════════════════════════════════════════════════════
   Future<void> _predict() async {
-    setState(() { _isLoading = true; _result = null; });
-    try {
-      final result = await ApiService.predictObesity(
-        usia:         double.parse(_usiaCtrl.text),
-        tinggi:       double.parse(_tinggiCtrl.text),
-        berat:        double.parse(_beratCtrl.text),
-        jenisKelamin: _jenisKelamin,
-        alkohol:      _alkohol,
-        kaloriTinggi: _kaloriTinggi,
-        monitoring:   _monitoring,
-        merokok:      _merokok,
-        riwayat:      _riwayat,
-        ngamil:       _ngamil,
-        transport:    _transport,
-        sayur:        double.parse(_sayurCtrl.text),
-        makanHarian:  int.parse(_makanCtrl.text),
-        konsumsiAir:  double.parse(_airCtrl.text),
-        aktivitas:    double.parse(_aktivitasCtrl.text),
-        waktuLayar:   double.parse(_layarCtrl.text),
-      );
-      setState(() => _result = result);
-    } catch (e) {
-      _showSnack('Gagal prediksi: $e', isError: true);
-    } finally {
-      setState(() => _isLoading = false);
-    }
+  setState(() { _isLoading = true; _result = null; });
+  try {
+    final result = await ApiService.predictObesity(
+      usia:         double.parse(_usiaCtrl.text),
+      tinggi:       double.parse(_tinggiCtrl.text),
+      berat:        double.parse(_beratCtrl.text),
+      jenisKelamin: _jenisKelamin,
+      alkohol:      _alkohol,
+      kaloriTinggi: _kaloriTinggi,
+      monitoring:   _monitoring,
+      merokok:      _merokok,
+      riwayat:      _riwayat,
+      ngamil:       _ngamil,
+      transport:    _transport,
+      sayur:        double.parse(_sayurCtrl.text),
+      makanHarian:  int.parse(_makanCtrl.text),
+      konsumsiAir:  double.parse(_airCtrl.text),
+      aktivitas:    double.parse(_aktivitasCtrl.text),
+      waktuLayar:   double.parse(_layarCtrl.text),
+    );
+    setState(() => _result = result);
+
+    // ✅ TAMBAHAN: Kirim notifikasi rekomendasi
+    final kategori = result['kategori'] as String? ?? '';
+    await NotificationService.showRekomendasiNotif(
+      kategori: kategori,
+      rekomendasi: _rekomendasi(kategori),
+    );
+
+  } catch (e) {
+    _showSnack('Gagal prediksi: $e', isError: true);
+  } finally {
+    setState(() => _isLoading = false);
   }
+}
 
   // ════════════════════════════════════════════════════════
   //  SIMPAN KE MONGODB via Laravel POST /api/obesity/save
